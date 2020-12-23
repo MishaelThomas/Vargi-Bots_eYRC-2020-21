@@ -50,7 +50,7 @@ class Ur5_moveit:
 
     def cb_capture_model(self, model):
     	if model.models != []:
-    		
+    		rospy.loginfo('\033[96m' + str(model.models[0].type) + '\033[0m')
     		self.model_type = model.models[0].type
     		self.model_pose = model.models[0].pose
 
@@ -86,17 +86,17 @@ class Ur5_moveit:
         rospy.loginfo(
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
 
-def place_pkg(px,py,pz,ox,oy,oz,ow):
+def place_pkg(ur5,px,py,pz,ox,oy,oz,ow):
 	ur5_2_place_pose = geometry_msgs.msg.Pose()
-    ur5_2_place_pose.position.x = px
-    ur5_2_place_pose.position.y = py
-    ur5_2_place_pose.position.z = pz
-    ur5_2_place_pose.orientation.x = ox
-    ur5_2_place_pose.orientation.y = oy
-    ur5_2_place_pose.orientation.z = oz
-    ur5_2_place_pose.orientation.w = ow
-    ur5.go_to_pose(ur5_2_place_pose)
-    rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
+	ur5_2_place_pose.position.x = px
+	ur5_2_place_pose.position.y = py
+	ur5_2_place_pose.position.z = pz
+	ur5_2_place_pose.orientation.x = ox
+	ur5_2_place_pose.orientation.y = oy
+	ur5_2_place_pose.orientation.z = oz
+	ur5_2_place_pose.orientation.w = ow
+	ur5.go_to_pose(ur5_2_place_pose)
+	rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
     
 def main():
     
@@ -110,24 +110,45 @@ def main():
     
     rospy.wait_for_service('/eyrc/vb/conveyor/set_power')
     conveyor_belt_service_call = rospy.ServiceProxy('/eyrc/vb/conveyor/set_power', conveyorBeltPowerMsg)
-    conveyor_belt_service_call(30)
     
     box_length = 0.15               # Length of the Package
     vacuum_gripper_width = 0.115    # Vacuum Gripper Width
-    delta = vacuum_gripper_width + (box_length/2)  # 0.19
+    delta = vacuum_gripper_width + (box_length/2) # 0.19
     # Teams may use this info in Tasks
     
+    rospy.loginfo('\033[96m' + "BEGIN" + '\033[0m')
     conveyor_belt_service_call(100)
-    
+    '''
+    rospy.sleep(2)
+    pos = ur5.model_pose.position
+    ur5_2_pick_pose = geometry_msgs.msg.Pose()
+    ur5_2_pick_pose.position.x = -0.8 + pos.z
+    ur5_2_pick_pose.position.y = pos.y - 0.005
+    ur5_2_pick_pose.position.z = 2 + delta - pos.x
+    ur5_2_pick_pose.orientation.x = -0.5
+    ur5_2_pick_pose.orientation.y = -0.5
+    ur5_2_pick_pose.orientation.z = 0.5
+    ur5_2_pick_pose.orientation.w = 0.5
+    ur5.go_to_pose(ur5_2_pick_pose)
+    rospy.loginfo('\033[96m' + "pick pose reached!!" + '\033[0m')
+    		
+    rospy.sleep(1)
+    gripper_service_call(True)
+    place_pkg(ur5,0.817,0.109,0.995,0.0,0.0,0.0,0.0)
+    rospy.sleep(1)
+    gripper_service_call(False)
+    '''
     while not rospy.is_shutdown():
     	if ur5.model_type in pkg_list:
     		
+    		curr_pkg = ur5.model_type
     		rospy.sleep(0.5)
     		conveyor_belt_service_call(0)
+    		rospy.loginfo('\033[96m' + "STOP" + '\033[0m')
     		pos = ur5.model_pose.position
     		ur5_2_pick_pose = geometry_msgs.msg.Pose()
     		ur5_2_pick_pose.position.x = -0.8 + pos.z
-    		ur5_2_pick_pose.position.y = pos.y
+    		ur5_2_pick_pose.position.y = pos.y - 0.05 
     		ur5_2_pick_pose.position.z = 2 + delta - pos.x
     		ur5_2_pick_pose.orientation.x = -0.5
     		ur5_2_pick_pose.orientation.y = -0.5
@@ -135,21 +156,23 @@ def main():
     		ur5_2_pick_pose.orientation.w = 0.5
     		ur5.go_to_pose(ur5_2_pick_pose)
     		rospy.loginfo('\033[96m' + "pick pose reached!!" + '\033[0m')
+    		rospy.loginfo('\033[96m' + str(ur5_2_pick_pose) + '\033[0m')
+    		rospy.loginfo('\033[96m' + str(pos) + '\033[0m')
     		
-    		rospy.sleep(0.5)
+    		rospy.sleep(1)
     		gripper_service_call(True)
+    		rospy.loginfo('\033[96m' + "ATTACHED" + '\033[0m')
+    		if curr_pkg == 'packagen1':
+    			place_pkg(ur5,0.817,0.109,0.995,-0.5,-0.5,0.5,0.5)
+    		elif curr_pkg == 'packagen2':
+    			place_pkg(ur5,0.817,0.109,0.995,-0.5,-0.5,0.5,0.5)
+    		elif curr_pkg == 'packagen3':
+    			place_pkg(ur5,0.817,0.109,0.995,-0.5,-0.5,0.5,0.5)
     		
-    		if ur5.model_type == 'packagen1':
-    			place_pkg(0.817,0.109,0.995,0.0,0.0,0.0,0.0)
-    		elif ur5.model_type == 'packagen2':
-    			place_pkg(0.817,0.109,0.995,0.0,0.0,0.0,0.0)
-    		elif ur5.model_type == 'packagen3':
-    			place_pkg(0.817,0.109,0.995,0.0,0.0,0.0,0.0)
-    		
-    		rospy.sleep(0.5)
+    		rospy.sleep(1)
     		gripper_service_call(False)
-    		
-    		conveyor_belt_service_call(50)
+    		rospy.loginfo('\033[96m' + "DETACHED" + '\033[0m')
+    		conveyor_belt_service_call(100)
    
     del ur5
 
