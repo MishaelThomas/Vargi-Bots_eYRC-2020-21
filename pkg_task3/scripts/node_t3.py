@@ -86,18 +86,46 @@ class Ur5_moveit:
         rospy.loginfo(
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
 
-def place_pkg(px,py,pz,ox,oy,oz,ow):
-	ur5_2_place_pose = geometry_msgs.msg.Pose()
-    ur5_2_place_pose.position.x = px
-    ur5_2_place_pose.position.y = py
-    ur5_2_place_pose.position.z = pz
-    ur5_2_place_pose.orientation.x = ox
-    ur5_2_place_pose.orientation.y = oy
-    ur5_2_place_pose.orientation.z = oz
-    ur5_2_place_pose.orientation.w = ow
-    ur5.go_to_pose(ur5_2_place_pose)
-    rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
-    
+    def place_pkg(self,package_name):
+        ur5_2_place_pose = geometry_msgs.msg.Pose()
+        #self.ee_cartesian_translation(0.0,0.0,1.2)
+        if(package_name=="Red"):
+            ur5_2_place_pose.position.x = 0.11
+            ur5_2_place_pose.position.y = 0.65
+            ur5_2_place_pose.position.z = 1.3
+            ur5_2_place_pose.orientation.x = -0.5
+            ur5_2_place_pose.orientation.y = -0.5
+            ur5_2_place_pose.orientation.z = 0.5
+            ur5_2_place_pose.orientation.w = 0.5
+            self.go_to_pose(ur5_2_place_pose)
+            rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
+
+        elif(package_name=="Green"):
+            ur5_2_place_pose.position.x = 0.75
+            ur5_2_place_pose.position.y = 0.03
+            ur5_2_place_pose.position.z =1.4
+            ur5_2_place_pose.orientation.x = -0.5
+            ur5_2_place_pose.orientation.y = -0.5
+            ur5_2_place_pose.orientation.z = 0.5
+            ur5_2_place_pose.orientation.w = 0.5
+            self.go_to_pose(ur5_2_place_pose)
+            rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
+
+
+        elif(package_name=="Blue"):
+            ur5_2_place_pose.position.x = 0.04
+            ur5_2_place_pose.position.y = -0.65
+            ur5_2_place_pose.position.z = 1.4
+            ur5_2_place_pose.orientation.x = -0.5
+            ur5_2_place_pose.orientation.y = -0.5
+            ur5_2_place_pose.orientation.z = 0.5
+            ur5_2_place_pose.orientation.w = 0.5
+            self.go_to_pose(ur5_2_place_pose)
+            rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
+        else :
+            rospy.loginfo("package name given is not in correct format.The names are Red ,Green ,Blue")
+
+
 def main():
     
     ur5 = Ur5_moveit()
@@ -121,38 +149,45 @@ def main():
     
     while not rospy.is_shutdown():
     	if ur5.model_type in pkg_list:
+    	    rospy.sleep(0.5)
+    	    conveyor_belt_service_call(0)
+    	    pos = ur5.model_pose.position
+    	    ur5_2_pick_pose = geometry_msgs.msg.Pose()
+    	    ur5_2_pick_pose.position.x = -0.8 + pos.z
+    	    ur5_2_pick_pose.position.y = pos.y
+    	    ur5_2_pick_pose.position.z = 2 + delta - pos.x
+    	    ur5_2_pick_pose.orientation.x = -0.5
+    	    ur5_2_pick_pose.orientation.y = -0.5
+    	    ur5_2_pick_pose.orientation.z = 0.5
+    	    ur5_2_pick_pose.orientation.w = 0.5
+    	    ur5.go_to_pose(ur5_2_pick_pose)
+    	    rospy.loginfo('\033[96m' + "pick pose reached!!" + '\033[0m')
     		
-    		rospy.sleep(0.5)
-    		conveyor_belt_service_call(0)
-    		pos = ur5.model_pose.position
-    		ur5_2_pick_pose = geometry_msgs.msg.Pose()
-    		ur5_2_pick_pose.position.x = -0.8 + pos.z
-    		ur5_2_pick_pose.position.y = pos.y
-    		ur5_2_pick_pose.position.z = 2 + delta - pos.x
-    		ur5_2_pick_pose.orientation.x = -0.5
-    		ur5_2_pick_pose.orientation.y = -0.5
-    		ur5_2_pick_pose.orientation.z = 0.5
-    		ur5_2_pick_pose.orientation.w = 0.5
-    		ur5.go_to_pose(ur5_2_pick_pose)
-    		rospy.loginfo('\033[96m' + "pick pose reached!!" + '\033[0m')
+    	    rospy.sleep(0.5)
+    	    gripper_service_call(True)
     		
-    		rospy.sleep(0.5)
-    		gripper_service_call(True)
+    	    if ur5.model_type == 'packagen1':
+    		    place_pkg(
+    	    elif ur5.model_type == 'packagen2':
+    		    place_pkg(0.817,0.109,0.995,0.0,0.0,0.0,0.0)
+    	    elif ur5.model_type == 'packagen3':
+    		    place_pkg(0.817,0.109,0.995,0.0,0.0,0.0,0.0)
     		
-    		if ur5.model_type == 'packagen1':
-    			place_pkg(0.817,0.109,0.995,0.0,0.0,0.0,0.0)
-    		elif ur5.model_type == 'packagen2':
-    			place_pkg(0.817,0.109,0.995,0.0,0.0,0.0,0.0)
-    		elif ur5.model_type == 'packagen3':
-    			place_pkg(0.817,0.109,0.995,0.0,0.0,0.0,0.0)
+    	    rospy.sleep(0.5)
+    	    gripper_service_call(False)
+            """
+            place_pkg("Red")
+            ur5.go_to_pose(ur5_2_pick_pose)
+            place_pkg("Green")
+            ur5.go_to_pose(ur5_2_pick_pose)
+            place_pkg("Blue")
+            ur5.go_to_pose(ur5_2_pick_pose)"""
+
     		
-    		rospy.sleep(0.5)
-    		gripper_service_call(False)
-    		
-    		conveyor_belt_service_call(50)
+    	    conveyor_belt_service_call(50)
    
     del ur5
 
 if __name__ == '__main__':
     main()
-
+    
