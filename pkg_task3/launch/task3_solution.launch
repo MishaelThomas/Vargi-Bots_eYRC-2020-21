@@ -1,0 +1,5 @@
+<launch>
+<!-- Launch Task-3 Simulation Environment in Gazebo -->
+<include file="$(find pkg_vb_sim)/launch/task3_simulation.launch" />
+
+</launch>
