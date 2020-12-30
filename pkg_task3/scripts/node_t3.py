@@ -149,18 +149,27 @@ class Ur5_moveit:
         print("-------wrt_world-----")
         print(pose_package_wrt_world)
         pose_ee_wrt_world=self._group.get_current_pose().pose
-        cartesian_path=(-(pose_ee_wrt_world.position.x-pose_package_wrt_world[0]-self.delta),-(pose_ee_wrt_world.position.y-pose_package_wrt_world[1]),-(pose_ee_wrt_world.position.z-pose_package_wrt_world[2]))
+        cartesian_path=(-(pose_ee_wrt_world.position.x-pose_package_wrt_world[0]),-(pose_ee_wrt_world.position.y-pose_package_wrt_world[1]),-(pose_ee_wrt_world.position.z-pose_package_wrt_world[2])+self.delta)
+        x,y,z=cartesian_path
+        print("-----x,y,z")
+        print(x,y,z)
+        print("------cartesian path")
         print(cartesian_path)
         return cartesian_path
 
     def pick_pkg(self,package_pose):
         self.conveyor_belt_service_call(0)
         x,y,z=self.calculate_cartesian_path(package_pose)
+        #print("--------x,y,z")
+        #print(x,y,z)
+        
         self.ee_cartesian_translation(x,y,z)
+        print("-----pahunch----gaya----")
         self.gripper_service_call(True)
+        print("-----pakad_liya-----")
 
     def init_pose(self):
-        joint_angles=[2.9850250068587805, 0.2066173353226901, -1.298452655156396, -0.47854773274707796, -1.570387970006058, -0.15562259264570333]
+        joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
         self._group.go(joint_angles,wait=True)
         #self.ee_cartesian_translation(0,0,0.3)
     # Destructor
@@ -171,16 +180,19 @@ class Ur5_moveit:
 
     def place_pkg(self,package_name):
         joint_values=[]
-        self.ee_cartesian_translation(0,0,0.2)
-        self.conveyor_belt_service_call(40)
-        if(package_name=="package1"):
+        #self.ee_cartesian_translation(0,0,0.2)
+        self.conveyor_belt_service_call(15)
+        if(package_name=="packagen1"):
             joint_values=[-1.5722165746417147, -2.0156468764887974, -1.4441489746467298, -1.253079896204322, 1.5716701789574419, -1.5731922855980915]
-        if (package_name=="package2"):
+        if (package_name=="packagen2"):
             joint_values=[-0.10597267010129219, -0.9232539830623159, 0.8675774939714938, -1.5159454519701585, -1.5716655689094967, 3.034847263597408]
-        if(package_name=="package3"):
+        if(package_name=="packagen3"):
             joint_values=[-1.677851795541076, -1.193402632379506, 1.2809171265671475, -1.6590883174733078, -1.5713969000516617, 1.4627511449783928]
         self._group.go(joint_values,wait=True)
+        rospy.sleep(0.1)
         self.gripper_service_call(False)
+        #self.gripper_service_call(False)
+        self.conveyor_belt_service_call(27)
         self.init_pose()
 
         """
@@ -227,7 +239,7 @@ def main():
     # Creating an object of Ur5_moveit class
     ur5 = Ur5_moveit()
     #ur5.init_pose()
-    ur5.conveyor_belt_service_call(40)
+    ur5.conveyor_belt_service_call(50)
     ur5.init_pose()
     while not rospy.is_shutdown():
         if(len(ur5.model.models)>=2):
@@ -237,10 +249,13 @@ def main():
                     print("----package_type-----")
                     print(package)
             #ur5.conveyor_belt_service_call(0)
-            
+            #ur5.ee_cartesian_translation(0.089,0.304,-0.305)
             #ur5.calculate_cartesian_path(x.pose)
             
             ur5.pick_pkg(x.pose)
+            #ur5.init_pose()
+            
+            #break
             ur5.place_pkg(x.type)
         else:
             continue
