@@ -17,8 +17,9 @@ from pkg_vb_sim.srv import conveyorBeltPowerMsg, conveyorBeltPowerMsgRequest, co
 
 # Importing msg file for obtaining the feed of Logical camera
 from pkg_vb_sim.msg import LogicalCameraImage
-
-pkg_present_flag=0
+all_pkg=["packagen1","packagen2","packagen3"]
+pkg_picked=[]
+work_done=False
 class Ur5_moveit:
 
     # Constructor
@@ -68,10 +69,6 @@ class Ur5_moveit:
     # It updates the node with models recently scanned by logical camera
     def cb_capture_model(self, model):
         self.model=model
-    	"""if model.models != [] and model.models
-    		rospy.loginfo('\033[96m' + str(model.models[0].type) + '\033[0m')
-    		self.model_type = model.models[0].type
-    		self.model_pose = model.models[0].pose"""
 
     # Function: go_to_pose() controls the ur5 arm and takes it to the provided position and orientation
     def go_to_pose(self, arg_pose):
@@ -103,17 +100,29 @@ class Ur5_moveit:
 
 # function to control conveyer belt
     def control_conveyor_belt(self):
-        global pkg_present_flag
+        global pkg_picked
+        global all_pkg
+        global work_done
+        if (work_done):
+            return
         self.conveyor_belt_service_call(100)
-        while len(self.model.models) == 0:
+        while len(self.model.models) == 0 or len(self.model.models)==2:
+            if len(self.model.models)==2:
+                for x in self.model.models:
+                    if(x.type in pkg_picked):
+                        picked_present=True
+                        break
+                    else:
+                        picked_present=False
+                if(picked_present):
+                    continue
+                else:
+                    break    
+        while len(self.model.models)==1 and self.model.models[0].type=="ur5":
             continue
-        if len(self.model.models) == 1 and self.model.models[0].type=="ur5":
-            while len(self.model.models)==1:
-                continue
-        else:
-            rospy.sleep(0.5)
-            self.conveyor_belt_service_call(0)
-            pkg_present_flag=1
+        rospy.sleep(0.5)
+        self.conveyor_belt_service_call(0)
+        
         
     def ee_cartesian_translation(self, trans_x, trans_y, trans_z):
         # 1. Create a empty list to hold waypoints
@@ -156,28 +165,22 @@ class Ur5_moveit:
         self._group.execute(plan)
 
     def calculate_cartesian_path (self,package_pose_wrt_camera):
-        print("------wrt_camera------")
-        print(package_pose_wrt_camera)
         pose_package_wrt_world=[-0.8+package_pose_wrt_camera.position.z,package_pose_wrt_camera.position.y,2-package_pose_wrt_camera.position.x]
-        print("-------wrt_world-----")
-        print(pose_package_wrt_world)
         pose_ee_wrt_world=self._group.get_current_pose().pose
         cartesian_path=(-(pose_ee_wrt_world.position.x-pose_package_wrt_world[0]),-(pose_ee_wrt_world.position.y-pose_package_wrt_world[1]),-(pose_ee_wrt_world.position.z-pose_package_wrt_world[2])+self.delta)
         x,y,z=cartesian_path
         return cartesian_path
 
     def pick_pkg(self,package_pose):
-        #self.conveyor_belt_service_call(0)
         x,y,z=self.calculate_cartesian_path(package_pose)
-        self.ee_cartesian_translation(x,y,z)
+        self.ee_cartesian_translation(x,y,z))
         self.gripper_service_call(True)
-        joint_values=[2.769184894968303, -1.8299176678751259, 2.55457126049453, -2.2954498208923253, -1.5707965972204212, -0.37240775852547614]
-        self._group.go(joint_values,wait=True)
         
 
     def init_pose(self):
         joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
         self._group.go(joint_angles,wait=True)
+
     # Destructor
     def __del__(self):
         moveit_commander.roscpp_shutdown()
@@ -185,6 +188,8 @@ class Ur5_moveit:
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
 
     def place_pkg(self,package_name):
+        global all_pkg
+        global pkg_picked
         if(package_name=="packagen1"):
             joint_values=[-1.5722165746417147, -2.0156468764887974, -1.4441489746467298, -1.253079896204322, 1.5716701789574419, -1.5731922855980915]
         if (package_name=="packagen2"):
@@ -194,12 +199,13 @@ class Ur5_moveit:
         self._group.go(joint_values,wait=True)
         rospy.sleep(0.1)
         self.gripper_service_call(False)
-        self.init_pose()
+        #self.init_pose()
 
 def main():
     
     # Creating an object of Ur5_moveit class
-    global pkg_present_flag
+    global pkg_picked
+    global work_done
     ur5=Ur5_moveit()
     while not rospy.is_shutdown():
         ur5.init_pose()
@@ -212,120 +218,21 @@ def main():
             if x.type != "ur5":
                 package=x
         ur5.conveyor_belt_service_call(0)
-        ur5.pick_pkg(package.pose)
-        while (True):
+        while (work_done==False):
+            ur5.pick_pkg(package.pose)
+            pkg_picked.append(package.type)
+            if(len(all_pkg)-len(pkg_picked)==0):
+                work_done=True
             thread1=threading.Thread(target=ur5.place_pkg,args=(package.type,))
             thread2=threading.Thread(target=ur5.control_conveyor_belt)
             thread1.start()
             thread2.start()
             thread1.join()
             thread2.join()
-            if(pkg_present_flag==1):
-                for x in ur5.model.models:
-                    if  x.type != "ur5":
-                        package=x
-                #rospy.sleep(0.5)
-                ur5.pick_pkg(package.pose)
-                pkg_present_flag=0
-            #else:
-                #del ur5
-    del ur5
-    """ur5.pick_pkg(ur5.model.models[0].type)
-    while not  rospy.is_shutdown():
-        thread1=threading.Thread(target=ur5.place(ur5.model.models"""
-
-
-
-    """ ur5 = Ur5_moveit()
-    ur5.conveyor_belt_service_call(50)
-    ur5.init_pose()
-    while not rospy.is_shutdown():
-        if(len(ur5.model.models)>=2):
             for x in ur5.model.models:
-                if x.type != "ur5":
+                if  x.type != "ur5":
                     package=x
-                    print("----package_type-----")
-                    print(package)
-            
-            ur5.pick_pkg(x.pose)
-            
-            ur5.place_pkg(x.type)
-        else:
-            continue"""
-
-
-    """
-    # List of packages that we want to pick
-    pkg_list = ['packagen1','packagen2','packagen3']
-    
-    # Handle for subscibing to ROS topic "/eyrc/vb/logical_camera_2"
-    rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,ur5.cb_capture_model)
-    
-    # Creating a handle to use Vacuum Gripper service
-    rospy.wait_for_service('/eyrc/vb/ur5_1/activate_vacuum_gripper')
-    gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5_1/activate_vacuum_gripper', vacuumGripper)
-    
-    # Creating a handle to use Conveyor Belt service with desired power
-    rospy.wait_for_service('/eyrc/vb/conveyor/set_power')
-    conveyor_belt_service_call = rospy.ServiceProxy('/eyrc/vb/conveyor/set_power', conveyorBeltPowerMsg)
-    
-    box_length = 0.15               # Length of the Package
-    vacuum_gripper_width = 0.115    # Vacuum Gripper Width
-    delta = vacuum_gripper_width + (box_length/2) # 0.19
-    
-    rospy.loginfo('\033[96m' + "BEGIN" + '\033[0m')
-    conveyor_belt_service_call(100)
-    
-    while not rospy.is_shutdown():    	
-    	# In case, one of the packages is detected
-    	 6666663if ur5.model_type in pkg_list:   
-    		
-    		# curr_pkg: a variable that stores details of detected package
-    		curr_pkg = ur5.model_type
-    		
-    		# Breaking the power supply of conveyor belt
-    		rospy.sleep(0.5)
-    		conveyor_belt_service_call(0)
-    		rospy.loginfo('\033[96m' + "STOP" + '\033[0m')
-    		
-    		# Determining the pick pose for ur5 arm using the pose of package obtained from logical camera
-    		pos = ur5.model_pose.position
-    		ur5_2_pick_pose = geometry_msgs.msg.Pose()
-    		ur5_2_pick_pose.position.x = -0.8 + pos.z
-    		ur5_2_pick_pose.position.y = pos.y - 0.05
-    		ur5_2_pick_pose.position.z = 2 + delta - pos.x
-    		ur5_2_pick_pose.orientation.x = -0.5
-    		ur5_2_pick_pose.orientation.y = -0.5
-    		ur5_2_pick_pose.orientation.z = 0.5
-    		ur5_2_pick_pose.orientation.w = 0.5
-    		ur5.go_to_pose(ur5_2_pick_pose)
-    		rospy.loginfo('\033[96m' + "pick pose reached!!" + '\033[0m')
-    		rospy.loginfo('\033[96m' + str(ur5_2_pick_pose) + '\033[0m')
-    		rospy.loginfo('\033[96m' + str(pos) + '\033[0m')
-    		
-    		# Activating the vacuum gripper
-    		rospy.sleep(1)
-    		gripper_service_call(True)
-    		rospy.loginfo('\033[96m' + "ATTACHED" + '\033[0m')
-    		
-    		# Placing the packages in assigned bins
-    		if curr_pkg == 'packagen1':
-    			ur5.place_pkg("Red")
-    		elif curr_pkg == 'packagen2':
-    			ur5.place_pkg("Green")
-    		elif curr_pkg == 'packagen3':
-    			ur5.place_pkg("Blue")
-    		
-    		# Deactivating the gripper
-    		rospy.sleep(1)
-    		gripper_service_call(False)
-    		rospy.loginfo('\033[96m' + "DETACHED" + '\033[0m')
-    		
-    		# Resuming the power supply of conveyor belt
-    		conveyor_belt_service_call(100)
-   
-    # Removing the object of Ur5_moveit class"""
-    #del ur5
+    del ur5
 
 if __name__ == '__main__':
     main()
