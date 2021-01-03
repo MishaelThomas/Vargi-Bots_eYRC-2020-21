@@ -5,7 +5,7 @@
 import rospy
 import sys
 import copy
-
+import threading
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
@@ -18,6 +18,7 @@ from pkg_vb_sim.srv import conveyorBeltPowerMsg, conveyorBeltPowerMsgRequest, co
 # Importing msg file for obtaining the feed of Logical camera
 from pkg_vb_sim.msg import LogicalCameraImage
 
+pkg_present_flag=0
 class Ur5_moveit:
 
     # Constructor
@@ -100,8 +101,20 @@ class Ur5_moveit:
 
         return flag_plan
 
-
-    
+# function to control conveyer belt
+    def control_conveyor_belt(self):
+        global pkg_present_flag
+        self.conveyor_belt_service_call(100)
+        while len(self.model.models) == 0:
+            continue
+        if len(self.model.models) == 1 and self.model.models[0].type=="ur5":
+            while len(self.model.models)==1:
+                continue
+        else:
+            rospy.sleep(0.5)
+            self.conveyor_belt_service_call(0)
+            pkg_present_flag=1
+        
     def ee_cartesian_translation(self, trans_x, trans_y, trans_z):
         # 1. Create a empty list to hold waypoints
         waypoints = []
@@ -151,27 +164,20 @@ class Ur5_moveit:
         pose_ee_wrt_world=self._group.get_current_pose().pose
         cartesian_path=(-(pose_ee_wrt_world.position.x-pose_package_wrt_world[0]),-(pose_ee_wrt_world.position.y-pose_package_wrt_world[1]),-(pose_ee_wrt_world.position.z-pose_package_wrt_world[2])+self.delta)
         x,y,z=cartesian_path
-        print("-----x,y,z")
-        print(x,y,z)
-        print("------cartesian path")
-        print(cartesian_path)
         return cartesian_path
 
     def pick_pkg(self,package_pose):
-        self.conveyor_belt_service_call(0)
+        #self.conveyor_belt_service_call(0)
         x,y,z=self.calculate_cartesian_path(package_pose)
-        #print("--------x,y,z")
-        #print(x,y,z)
-        
         self.ee_cartesian_translation(x,y,z)
-        print("-----pahunch----gaya----")
         self.gripper_service_call(True)
-        print("-----pakad_liya-----")
+        joint_values=[2.769184894968303, -1.8299176678751259, 2.55457126049453, -2.2954498208923253, -1.5707965972204212, -0.37240775852547614]
+        self._group.go(joint_values,wait=True)
+        
 
     def init_pose(self):
         joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
         self._group.go(joint_angles,wait=True)
-        #self.ee_cartesian_translation(0,0,0.3)
     # Destructor
     def __del__(self):
         moveit_commander.roscpp_shutdown()
@@ -179,9 +185,6 @@ class Ur5_moveit:
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
 
     def place_pkg(self,package_name):
-        joint_values=[]
-        #self.ee_cartesian_translation(0,0,0.2)
-        self.conveyor_belt_service_call(15)
         if(package_name=="packagen1"):
             joint_values=[-1.5722165746417147, -2.0156468764887974, -1.4441489746467298, -1.253079896204322, 1.5716701789574419, -1.5731922855980915]
         if (package_name=="packagen2"):
@@ -191,54 +194,49 @@ class Ur5_moveit:
         self._group.go(joint_values,wait=True)
         rospy.sleep(0.1)
         self.gripper_service_call(False)
-        #self.gripper_service_call(False)
-        self.conveyor_belt_service_call(27)
         self.init_pose()
-
-        """
-        ur5_2_place_pose = geometry_msgs.msg.Pose()
-        #self.ee_cartesian_translation(0.0,0.0,1.2)
-        if(package_name==""):
-            ur5_2_place_pose.position.x = 0.11
-            ur5_2_place_pose.position.y = 0.65
-            ur5_2_place_pose.position.z = 1.3
-            ur5_2_place_pose.orientation.x = -0.5
-            ur5_2_place_pose.orientation.y = -0.5
-            ur5_2_place_pose.orientation.z = 0.5
-            ur5_2_place_pose.orientation.w = 0.5
-            self.go_to_pose(ur5_2_place_pose)
-            rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
-
-        elif(package_name=="Green"):
-            ur5_2_place_pose.position.x = 0.75
-            ur5_2_place_pose.position.y = 0.03
-            ur5_2_place_pose.position.z =1.4
-            ur5_2_place_pose.orientation.x = -0.5
-            ur5_2_place_pose.orientation.y = -0.5
-            ur5_2_place_pose.orientation.z = 0.5
-            ur5_2_place_pose.orientation.w = 0.5
-            self.go_to_pose(ur5_2_place_pose)
-            rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
-
-
-        elif(package_name=="Blue"):
-            ur5_2_place_pose.position.x = 0.04
-            ur5_2_place_pose.position.y = -0.65
-            ur5_2_place_pose.position.z = 1.4
-            ur5_2_place_pose.orientation.x = -0.5
-            ur5_2_place_pose.orientation.y = -0.5
-            ur5_2_place_pose.orientation.z = 0.5
-            ur5_2_place_pose.orientation.w = 0.5
-            self.go_to_pose(ur5_2_place_pose)
-            rospy.loginfo('\033[96m' + "place pose reached!!" + '\033[0m')
-        else :
-            rospy.loginfo("package name given is not in correct format.The names are Red ,Green ,Blue")"""
 
 def main():
     
     # Creating an object of Ur5_moveit class
-    ur5 = Ur5_moveit()
-    #ur5.init_pose()
+    global pkg_present_flag
+    ur5=Ur5_moveit()
+    while not rospy.is_shutdown():
+        ur5.init_pose()
+        ur5.conveyor_belt_service_call(100)
+        while len(ur5.model.models) <= 1:
+            continue
+        rospy.sleep(0.5)
+        #ur5.conveyor_belt_service_call(0)
+        for x in ur5.model.models:
+            if x.type != "ur5":
+                package=x
+        ur5.conveyor_belt_service_call(0)
+        ur5.pick_pkg(package.pose)
+        while (True):
+            thread1=threading.Thread(target=ur5.place_pkg,args=(package.type,))
+            thread2=threading.Thread(target=ur5.control_conveyor_belt)
+            thread1.start()
+            thread2.start()
+            thread1.join()
+            thread2.join()
+            if(pkg_present_flag==1):
+                for x in ur5.model.models:
+                    if  x.type != "ur5":
+                        package=x
+                #rospy.sleep(0.5)
+                ur5.pick_pkg(package.pose)
+                pkg_present_flag=0
+            #else:
+                #del ur5
+    del ur5
+    """ur5.pick_pkg(ur5.model.models[0].type)
+    while not  rospy.is_shutdown():
+        thread1=threading.Thread(target=ur5.place(ur5.model.models"""
+
+
+
+    """ ur5 = Ur5_moveit()
     ur5.conveyor_belt_service_call(50)
     ur5.init_pose()
     while not rospy.is_shutdown():
@@ -248,17 +246,12 @@ def main():
                     package=x
                     print("----package_type-----")
                     print(package)
-            #ur5.conveyor_belt_service_call(0)
-            #ur5.ee_cartesian_translation(0.089,0.304,-0.305)
-            #ur5.calculate_cartesian_path(x.pose)
             
             ur5.pick_pkg(x.pose)
-            #ur5.init_pose()
             
-            #break
             ur5.place_pkg(x.type)
         else:
-            continue
+            continue"""
 
 
     """
@@ -332,7 +325,7 @@ def main():
     		conveyor_belt_service_call(100)
    
     # Removing the object of Ur5_moveit class"""
-    del ur5
+    #del ur5
 
 if __name__ == '__main__':
     main()
