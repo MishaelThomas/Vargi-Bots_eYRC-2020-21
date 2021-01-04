@@ -1,0 +1,8 @@
+<launch>
+  <!-- Spawn Task-2 Models in Gazebo -->
+    <include file="$(find pkg_vb_sim)/launch/task4_simulation.launch" />
+	
+	<!-- Launch two move_group nodes for the two UR5 Arms -->
+  <include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />  
+
+</launch>
