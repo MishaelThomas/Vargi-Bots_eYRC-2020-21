@@ -83,19 +83,25 @@ class Ur5_moveit:
 
         # 3. Create a New waypoint
         wpose = geometry_msgs.msg.Pose()
-        wpose.position.x = trans_x  
-        wpose.position.y = trans_y  
+        wpose.position.x = waypoints[0].position.x + (trans_x)  
+        wpose.position.y = waypoints[0].position.y + (trans_y)  
         #wpose.position.z = waypoints[0].position.z + (trans_z)
-        wpose.position.z = trans_z
+        wpose.position.z = waypoints[0].position.z + (trans_z)
         # This to keep EE parallel to Ground Plane
-        wpose.orientation.x = pose_values.orientation.x
+        '''wpose.orientation.x = pose_values.orientation.x
         wpose.orientation.y = pose_values.orientation.y
         wpose.orientation.z = pose_values.orientation.z
-        wpose.orientation.w = pose_values.orientation.w
+        wpose.orientation.w = pose_values.orientation.w'''
+        wpose.orientation.x = -0.706811211785
+        wpose.orientation.y = -5.59655056263e-05
+        wpose.orientation.z = 0.707402220467
+        wpose.orientation.w = 7.89934095612e-05
 
 
         # 4. Add the new waypoint to the list of waypoints
         waypoints.append(copy.deepcopy(wpose))
+        print('------------waypoints ------------------')
+        print(waypoints)
 
         # 5. Compute Cartesian Path connecting the waypoints in the list of waypoints
         (plan, fraction) = self._group.compute_cartesian_path(
@@ -111,8 +117,17 @@ class Ur5_moveit:
         print(plan.joint_trajectory.points)
         if (num_pts >= 3):
             del plan.joint_trajectory.points[0]
-            del plan.joint_trajectory.points[1]
-            del plan.joint_trajectory.points[2]
+            del plan.joint_trajectory.points[0]
+            #del plan.joint_trajectory.points[2]
+        
+        print('------------modified plan ------------------')
+        print(plan.joint_trajectory.points)
+        
+        display_trajectory = moveit_msgs.msg.DisplayTrajectory()
+        display_trajectory.trajectory_start = self._robot.get_current_state()
+        display_trajectory.trajectory.append(plan)
+        # Publish
+        self._display_trajectory_publisher.publish(display_trajectory);
 
         # 6. Make the arm follow the Computed Cartesian Path
         self._group.execute(plan)
@@ -141,9 +156,7 @@ class Ur5_moveit:
         #self.gripper_service_call(True)
 
     def init_pose(self):
-        joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842,
-        		 -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
-        
+        joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
         self._group.go(joint_angles,wait=True)
     
     def go_to_pose(self, arg_pose):
@@ -170,7 +183,17 @@ class Ur5_moveit:
                 '\033[94m' + ">>> go_to_pose() Failed. Solution for Pose not Found." + '\033[0m')
 
         return flag_plan
-          
+    
+    def go_to_predefined_pose(self, arg_pose_name):
+        rospy.loginfo('\033[94m' + "Going to Pose: {}".format(arg_pose_name) + '\033[0m')
+        self._group.set_named_target(arg_pose_name)
+        plan = self._group.plan()
+        goal = moveit_msgs.msg.ExecuteTrajectoryGoal()
+        goal.trajectory = plan
+        self._exectute_trajectory_client.send_goal(goal)
+        self._exectute_trajectory_client.wait_for_result()
+        rospy.loginfo('\033[94m' + "Now at Pose: {}".format(arg_pose_name) + '\033[0m')
+              
     # Destructor
     def __del__(self):
         moveit_commander.roscpp_shutdown()
@@ -189,12 +212,62 @@ def main():
     
     # Creating an object of Ur5_moveit class
     ur5 = Ur5_moveit()
+    #ur5.go_to_predefined_pose("straightUp")
+    #ur5.go_to_predefined_pose("allZeros")
+    '''pose_values = ur5._group.get_current_pose().pose
+    print(pose_values)
+    joint_values=ur5._group.get_current_joint_values()
+    print(joint_values)'''
+    '''STRAIGHT UP
+    position: 
+  x: 0.0952678525115
+  y: 0.109172185771
+  z: 1.85633654969
+orientation: 
+  x: -0.000102824460388
+  y: 0.707365978999
+  z: 6.18392670866e-05
+  w: 0.706847478143
+'''
     #ur5.init_pose()
-    #ur5.pick_pkg([0.817242,0.108936,0.944310])
-    ur5.ee_cartesian_translation(0.817242,0.108936,0.944310)
+    #ur5.pick_pkg([0,6.589954,1.197499])
+    #ur5.ee_cartesian_translation(0.817242,0.108936,0.944310)
+    
+    '''wpose = geometry_msgs.msg.Pose()
+    wpose.position.x = 0.232207335449
+    wpose.position.y = -0.214327922571
+    wpose.position.z = 1.89485233305
+    wpose.orientation.x = -0.706811211785
+    wpose.orientation.y = -5.59655056263e-05
+    wpose.orientation.z = 0.707402220467
+    wpose.orientation.w = 7.89934095612e-05
+    ur5.go_to_pose(wpose)'''
+    
+    '''wpose = geometry_msgs.msg.Pose()
+    wpose.position.x = 0.0
+    wpose.position.y = -0.23
+    wpose.position.z = 1.647499
+    wpose.orientation.x = -0.706811211785
+    wpose.orientation.y = -5.59655056263e-05
+    wpose.orientation.z = 0.707402220467
+    wpose.orientation.w = 7.89934095612e-05
+    ur5.go_to_pose(wpose)'''
+    
+    x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.427499])
+    pose_values = ur5._group.get_current_pose().pose
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x = pose_values.position.x + x
+    wpose.position.y = pose_values.position.y + y
+    wpose.position.z = pose_values.position.z + z
+    wpose.orientation.x = -0.706811211785
+    wpose.orientation.y = -5.59655056263e-05
+    wpose.orientation.z = 0.707402220467
+    wpose.orientation.w = 7.89934095612e-05
+    ur5.go_to_pose(wpose)
     
     #ur5.conveyor_belt_service_call(50)
     #ur5.init_pose()
+    
     '''package_pose = [[0.28,6.59,1.917499],
     		[0,6.59,1.917499],
     		[-0.28,6.59,1.917499],
@@ -208,10 +281,28 @@ def main():
     		[0,6.589954,1.197499],
     		[-0.28,6.589954,1.197499],]
     
+    i=0
     for current_pkg_pose in package_pose:
     	#ur5.init_pose()
-    	ur5.pick_pkg(current_pkg_pose)
-    	#ur5.place_pkg()'''
+    	#ur5.pick_pkg(current_pkg_pose)
+    	#ur5.place_pkg()
+    	x,y,z=ur5.calculate_cartesian_path(current_pkg_pose)
+    	
+        pose_values = ur5._group.get_current_pose().pose
+        
+        wpose = geometry_msgs.msg.Pose()
+        wpose.position.x = pose_values.position.x + x  
+        wpose.position.y = pose_values.position.y + y
+        wpose.position.z = pose_values.position.z + z
+        wpose.orientation.x = -0.706811211785
+        wpose.orientation.y = -5.59655056263e-05
+        wpose.orientation.z = 0.707402220467
+        wpose.orientation.w = 7.89934095612e-05
+        ur5.go_to_pose(wpose)
+        i=i+1
+        print("Done with pkg: {}".format(i))
+        ur5.init_pose()'''
+
 
 
     """
