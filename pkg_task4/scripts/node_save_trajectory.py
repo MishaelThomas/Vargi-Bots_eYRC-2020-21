@@ -40,18 +40,18 @@ class Ur5Moveit:
 
         #self._group.set_planning_time(99)
 
-        self._group.set_goal_position_tolerance(0.0009)
+        self._group.set_goal_position_tolerance(0.05)
 
         rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
 
-        self._box_name = 'packagen12'
+        self._box_name = 'packagen00'
         self._box_pose = geometry_msgs.msg.PoseStamped()
         
         self._box_pose.header.frame_id = "world"	
-        self._box_pose.pose.position.x = -0.28
-        self._box_pose.pose.position.y = 6.589954 - 7
-        self._box_pose.pose.position.z = 1.647499
+        self._box_pose.pose.position.x = 0.28
+        self._box_pose.pose.position.y = 6.59 - 7
+        self._box_pose.pose.position.z = 1.917499
         self._box_pose.pose.orientation.w = 1.0
 
         # Attribute to store computed trajectory by the planner	
@@ -222,6 +222,17 @@ class Ur5Moveit:
         ## END_SUB_TUTORIAL
 
     
+    def hard_set_joint_angles(self, arg_list_joint_angles, arg_max_attempts):
+
+		number_attempts = 0
+		flag_success = False
+		
+		while ( (number_attempts <= arg_max_attempts) and  (flag_success is False) ):
+			number_attempts += 1
+			flag_success = self.set_joint_angles(arg_list_joint_angles)
+			rospy.logwarn("attempts: {}".format(number_attempts) )
+			# self.clear_octomap()
+
     # Destructor
 
     def __del__(self):
@@ -237,13 +248,14 @@ def main():
     ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
 
     joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
-    ur5._group.go(joint_angles,wait=True)
+    ur5.hard_set_joint_angles(joint_angles,5)
+    rospy.sleep(0.1)
     #print(ur5._group.get_current_joint_values())
     #lst_joint_angles_1 = [3.0961934425438518, -1.3963754984801797, -1.0265399546726863, -3.0762337959665755, -0.13615785709219352, -0.774448375073403]
     #ur5.set_joint_angles(lst_joint_angles_1)
     #print(ur5._group.get_pose_reference_frame())
     #ur5.go_to_predefined_pose('straightUp')
-    x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.647499])
+    x,y,z=ur5.calculate_cartesian_path([0.28,-0.218+7-0.19,1.867])
     #ur5.ee_cartesian_translation(x,y,z)
     pose_values = ur5._group.get_current_pose().pose
     wpose = geometry_msgs.msg.Pose()
@@ -256,13 +268,14 @@ def main():
     wpose.orientation.w = 0.0007963
     ur5.go_to_pose(wpose)
 
-    file_name = 'place_to_pkg12.yaml'
+    file_name = 'place_to_pkg00.yaml'
     file_path = ur5._file_path + file_name
     
     with open(file_path, 'w') as file_save:
         yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
     
     rospy.loginfo( "File saved at: {}".format(file_path) )
+    rospy.sleep(0.1)
     
 
     result = ur5.gripper_service_call(True)
@@ -270,20 +283,21 @@ def main():
     ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
     print(ur5.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=4))
 
-    ur5.ee_cartesian_translation(0,0.25,0)
+    '''ur5.ee_cartesian_translation(0,0.25,0)
 
-    file_name = 'cp12_place.yaml'
+    file_name = 'cp01_place.yaml'
     file_path = ur5._file_path + file_name
     
     with open(file_path, 'w') as file_save:
         yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
     
-    rospy.loginfo( "File saved at: {}".format(file_path) )
-
-    lst_joint_angles_2 = [0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
-    ur5.set_joint_angles(lst_joint_angles_2)
+    rospy.loginfo( "File saved at: {}".format(file_path) )'''
+    rospy.sleep(0.1)
     
-    file_name = 'pkg12_to_place.yaml'
+    lst_joint_angles_2 = [0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
+    ur5.hard_set_joint_angles(lst_joint_angles_2,5)
+    
+    file_name = 'pkg00_to_place.yaml'
     file_path = ur5._file_path + file_name
     
     with open(file_path, 'w') as file_save:

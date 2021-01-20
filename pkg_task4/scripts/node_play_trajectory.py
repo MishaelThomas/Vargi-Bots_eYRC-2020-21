@@ -75,6 +75,18 @@ class Ur5Moveit:
 		# rospy.logerr(ret)
 		return ret
 
+    def moveit_hard_play_planned_path_from_file(self, arg_file_path, arg_file_name, arg_max_attempts):
+		number_attempts = 0
+		flag_success = False
+
+		while ( (number_attempts <= arg_max_attempts) and (flag_success is False) ):
+			number_attempts += 1
+			flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
+			rospy.logwarn("attempts: {}".format(number_attempts) )
+			# # self.clear_octomap()
+		
+		return True
+
     def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
     # Copy class variables to local variables to make the web tutorials more clear.
     # In practice, you should use the class variables directly unless you have a good
@@ -131,19 +143,17 @@ def main():
 
     joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
     ur5._group.go(joint_angles,wait=True)
-    
-    print(ur5._group.get_current_joint_values())
 
     rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'place_to_pkg12.yaml')
+    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'place_to_pkg00.yaml',5)
 
     result = ur5.gripper_service_call(True)
 
     rospy.logwarn("1. Playing cp10_place Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp12_place.yaml')
+    #ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'cp01_place.yaml',5)
 
     rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'pkg12_to_place.yaml')
+    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'pkg00_to_place.yaml',5)
 
     result = ur5.gripper_service_call(False)
 
