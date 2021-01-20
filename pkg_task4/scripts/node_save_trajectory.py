@@ -38,22 +38,20 @@ class Ur5Moveit:
         self._eef_link = self._group.get_end_effector_link()
         self._group_names = self._robot.get_group_names()
 
-        self._group.set_planning_time(99)
+        #self._group.set_planning_time(99)
 
-        # Allow some leeway in position (meters) and orientation (radians)
-        self._group.set_goal_position_tolerance(0.01)
-        self._group.set_goal_orientation_tolerance(0.1)
+        self._group.set_goal_position_tolerance(0.0009)
 
         rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
 
-        self._box_name = 'packagen21'
+        self._box_name = 'packagen12'
         self._box_pose = geometry_msgs.msg.PoseStamped()
         
         self._box_pose.header.frame_id = "world"	
-        self._box_pose.pose.position.x = 0
+        self._box_pose.pose.position.x = -0.28
         self._box_pose.pose.position.y = 6.589954 - 7
-        self._box_pose.pose.position.z = 1.427499
+        self._box_pose.pose.position.z = 1.647499
         self._box_pose.pose.orientation.w = 1.0
 
         # Attribute to store computed trajectory by the planner	
@@ -144,6 +142,43 @@ class Ur5Moveit:
 
 		return flag_plan
 
+    def go_to_pose(self, arg_pose):
+
+        pose_values = self._group.get_current_pose().pose
+        rospy.loginfo('\033[94m' + ">>> Current Pose:" + '\033[0m')
+        rospy.loginfo(pose_values)
+
+        self._group.set_pose_target(arg_pose)
+        self._computed_plan = self._group.plan()
+        flag_plan = self._group.go(wait=True)  # wait=False for Async Move
+        
+        self._group.stop()
+        pose_values = self._group.get_current_pose().pose
+        rospy.loginfo('\033[94m' + ">>> Final Pose:" + '\033[0m')
+        rospy.loginfo(pose_values)
+
+        list_joint_values = self._group.get_current_joint_values()
+        rospy.loginfo('\033[94m' + ">>> Final Joint Values:" + '\033[0m')
+        rospy.loginfo(list_joint_values)
+
+        if (flag_plan == True):
+            rospy.loginfo('\033[94m' + ">>> go_to_pose() Success" + '\033[0m')
+        else:
+            rospy.logerr(
+                '\033[94m' + ">>> go_to_pose() Failed. Solution for Pose not Found." + '\033[0m')
+
+        return flag_plan
+    
+    def go_to_predefined_pose(self, arg_pose_name):
+
+        rospy.loginfo('\033[94m' + "Going to Pose: {}".format(arg_pose_name) + '\033[0m')
+        self._group.set_named_target(arg_pose_name)
+        plan = self._group.plan()
+        goal = moveit_msgs.msg.ExecuteTrajectoryGoal()
+        goal.trajectory = plan
+        self._exectute_trajectory_client.send_goal(goal)
+        self._exectute_trajectory_client.wait_for_result()
+        rospy.loginfo('\033[94m' + "Now at Pose: {}".format(arg_pose_name) + '\033[0m')
 
     def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
     # Copy class variables to local variables to make the web tutorials more clear.
@@ -201,10 +236,27 @@ def main():
 
     ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
 
-    '''lst_joint_angles_1 = [-2.6011339293255, -2.3590931034680374, 1.8892899715041231, 0.32159706536877586, 0.47790973258301417, 0.036733309660952784]
-    ur5.set_joint_angles(lst_joint_angles_1)
-    
-    file_name = 'home_to_pkg21.yaml'
+    joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
+    ur5._group.go(joint_angles,wait=True)
+    #print(ur5._group.get_current_joint_values())
+    #lst_joint_angles_1 = [3.0961934425438518, -1.3963754984801797, -1.0265399546726863, -3.0762337959665755, -0.13615785709219352, -0.774448375073403]
+    #ur5.set_joint_angles(lst_joint_angles_1)
+    #print(ur5._group.get_pose_reference_frame())
+    #ur5.go_to_predefined_pose('straightUp')
+    x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.647499])
+    #ur5.ee_cartesian_translation(x,y,z)
+    pose_values = ur5._group.get_current_pose().pose
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x = pose_values.position.x + x
+    wpose.position.y = pose_values.position.y + y
+    wpose.position.z = pose_values.position.z + z
+    wpose.orientation.x = -0.9999997
+    wpose.orientation.y = 0
+    wpose.orientation.z = 0
+    wpose.orientation.w = 0.0007963
+    ur5.go_to_pose(wpose)
+
+    file_name = 'place_to_pkg12.yaml'
     file_path = ur5._file_path + file_name
     
     with open(file_path, 'w') as file_save:
@@ -212,16 +264,6 @@ def main():
     
     rospy.loginfo( "File saved at: {}".format(file_path) )
     
-    x,y,z=ur5.calculate_cartesian_path([0,6.589954,1.427499])
-    ur5.ee_cartesian_translation(x,y,z)
-
-    file_name = 'cp21_pick.yaml'
-    file_path = ur5._file_path + file_name
-    
-    with open(file_path, 'w') as file_save:
-        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
-    
-    rospy.loginfo( "File saved at: {}".format(file_path) )'''
 
     result = ur5.gripper_service_call(True)
     touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
@@ -230,7 +272,7 @@ def main():
 
     ur5.ee_cartesian_translation(0,0.25,0)
 
-    file_name = 'cp21_place.yaml'
+    file_name = 'cp12_place.yaml'
     file_path = ur5._file_path + file_name
     
     with open(file_path, 'w') as file_save:
@@ -241,7 +283,7 @@ def main():
     lst_joint_angles_2 = [0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
     ur5.set_joint_angles(lst_joint_angles_2)
     
-    file_name = 'pkg21_to_place.yaml'
+    file_name = 'pkg12_to_place.yaml'
     file_path = ur5._file_path + file_name
     
     with open(file_path, 'w') as file_save:

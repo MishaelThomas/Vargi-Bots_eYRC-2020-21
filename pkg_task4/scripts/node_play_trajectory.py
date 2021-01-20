@@ -41,24 +41,10 @@ class Ur5Moveit:
         self._group.set_planning_time(99)
 
         # Allow some leeway in position (meters) and orientation (radians)
-        self._group.set_goal_position_tolerance(0.1)
-        self._group.set_goal_orientation_tolerance(0.1)
-        self._group.set_goal_joint_tolerance(0.2)
+        
 
         rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
-
-        self._box_name = 'packagen21'
-        self._box_pose = geometry_msgs.msg.PoseStamped()
-        
-        self._box_pose.header.frame_id = "world"	
-        self._box_pose.pose.position.x = 0
-        self._box_pose.pose.position.y = 6.589954 - 7
-        self._box_pose.pose.position.z = 1.427499
-        self._box_pose.pose.orientation.w = 1.0
-
-        # Attribute to store computed trajectory by the planner	
-        self._computed_plan = ''
 
         # Current State of the Robot is needed to add box to planning scene
         self._curr_state = self._robot.get_current_state()
@@ -143,33 +129,23 @@ def main():
 
     ur5 = Ur5Moveit()
 
-    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
+    joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
+    ur5._group.go(joint_angles,wait=True)
+    
+    print(ur5._group.get_current_joint_values())
 
-    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
-
-    rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'home_to_pkg21.yaml')
-
-    rospy.logwarn("1. Playing cp21_pick Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_pick.yaml')
+    rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'place_to_pkg12.yaml')
 
     result = ur5.gripper_service_call(True)
-    touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
-    ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
-    print(ur5.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=4))
 
-    rospy.logwarn("1. Playing cp21_place Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_place.yaml')
+    rospy.logwarn("1. Playing cp10_place Trajectory File")
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp12_place.yaml')
 
-    rospy.logwarn("1. Playing pkg21_to_place Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'pkg21_to_place.yaml')
+    rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'pkg12_to_place.yaml')
 
     result = ur5.gripper_service_call(False)
-    ur5._scene.remove_attached_object(ur5._eef_link, name=ur5._box_name)
-    print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
-
-    # Removing the box from planning scene 	
-    ur5._scene.remove_world_object(ur5._box_name)
 
     del ur5
 

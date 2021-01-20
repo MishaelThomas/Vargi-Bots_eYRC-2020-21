@@ -222,9 +222,55 @@ def main():
     ur5 = Ur5_moveit()
 
 	# Adding the box to the scene
-    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
+    #ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
     
-    '''x,y,z=ur5.calculate_cartesian_path([0,6.689954,1.427499])
+    '''package_pose = [
+    		[0.28,6.689954,1.647499],
+    		[0,6.689954,1.647499],
+    		[-0.28,6.689954,1.647499],
+    		[0.28,6.689954,1.427499],
+    		[0,6.689954,1.427499],
+    		[-0.28,6.689954,1.427499],
+    		[0.28,6.689954,1.197499],
+    		[0,6.689954,1.197499],
+    		[-0.28,6.689954,1.197499]]'''
+    
+    package_pose = [
+    		[-0.28,6.689954,1.427499]]
+
+    joint_values = []
+
+    for current_pkg_pose in package_pose:
+    	
+    	x,y,z=ur5.calculate_cartesian_path(current_pkg_pose)
+    	
+        pose_values = ur5._group.get_current_pose().pose
+        
+        wpose = geometry_msgs.msg.Pose()
+        wpose.position.x = pose_values.position.x + x  
+        wpose.position.y = pose_values.position.y + y
+        wpose.position.z = pose_values.position.z + z
+        wpose.orientation.x = -0.9999997
+        wpose.orientation.y = 0
+        wpose.orientation.z = 0
+        wpose.orientation.w = 0.0007963
+        ur5.go_to_pose(wpose)
+
+        joint_value=ur5._group.get_current_joint_values()
+        joint_values.append(joint_value)
+
+    print(joint_values)
+    '''
+    joint_values = [[3.0961934425438518, -1.3963754984801797, -1.0265399546726863, -3.0762337959665755, -0.13615785709219352, -0.774448375073403], 
+                    [-2.594161603628664, -0.9850697094404168, -1.0762917915013288, 1.9376494913181297, 0.48750919502248813, 0.02489612242544137], 
+                    [0.7701424773555852, -1.3229593678177114, -1.569949921495847, -0.28907541687933236, 2.297089879902943, 3.0933279054482377], 
+                    [-0.7853496398665101, -1.7825198462401932, 1.6327786172349033, 0.274402621950232, 2.3102420430608746, 0.18039976226303356],
+                    [2.9045875238583676, -0.6364245016276779, -1.903785319209736, 2.9853703633234776, -0.19226567771241054, -0.3952494192884446], 
+                    [-3.1117644656533665, 0.014097466075142506, -2.149155695206158, -0.16302046871382814, -0.03483056533010753, 2.3187371114251274], 
+                    [-0.7462554347364483, -1.7528648202726522, 2.185082828159974, -0.5270300660187441, 2.4257301137190623, -0.052334840847803044], 
+                    [2.6720701386007235, -0.6762202761818568, -2.4925834555524267, 3.0379795019802565, -0.45791864489519263, 0.05317379659126864], 
+                    [0.7643454228991988, -1.3785890194097448, -2.181436345581874, -2.65148888042412, -2.3237549412893426, -0.04347946372959832]]
+    x,y,z=ur5.calculate_cartesian_path([0,6.689954,1.427499])
     pose_values = ur5._group.get_current_pose().pose
     wpose = geometry_msgs.msg.Pose()
     wpose.position.x = pose_values.position.x + x
@@ -234,13 +280,13 @@ def main():
     wpose.orientation.y = 0
     wpose.orientation.z = 0
     wpose.orientation.w = 0.0007963
-    ur5.go_to_pose(wpose)'''
+    ur5.go_to_pose(wpose)
     joint_value_0 = [-2.6011339293255, -2.3590931034680374, 1.8892899715041231, 0.32159706536877586, 0.47790973258301417, 0.036733309660952784]
     ur5._group.go(joint_value_0,wait=True)
     x,y,z=ur5.calculate_cartesian_path([0,6.589954,1.427499])
     ur5.ee_cartesian_translation(x,y,z)
-    '''joint_value_1 = [2.074430144400317, -1.0963980516344831, -2.2479738864668946, 0.2403598626789636, 1.0501801208377302, 3.046324064107367]
-    ur5._group.go(joint_value_1,wait=True)'''
+    joint_value_1 = [2.074430144400317, -1.0963980516344831, -2.2479738864668946, 0.2403598626789636, 1.0501801208377302, 3.046324064107367]
+    ur5._group.go(joint_value_1,wait=True)
 
     result = ur5.gripper_service_call(True)
     touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
@@ -249,7 +295,7 @@ def main():
     ur5.ee_cartesian_translation(0,0.25,0)
     joint_value_1 = [0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
     ur5._group.go(joint_value_1,wait=True)
-    '''ur5_2_home_pose = geometry_msgs.msg.Pose()
+    ur5_2_home_pose = geometry_msgs.msg.Pose()
     ur5_2_home_pose.position.x = -0.8
     ur5_2_home_pose.position.y = 0
     ur5_2_home_pose.position.z = 1.19
@@ -257,7 +303,7 @@ def main():
     ur5_2_home_pose.orientation.y = -0.5
     ur5_2_home_pose.orientation.z = 0.5
     ur5_2_home_pose.orientation.w = 0.5
-    ur5.go_to_pose(ur5_2_home_pose)'''
+    ur5.go_to_pose(ur5_2_home_pose)
 
     # Deactivating the Gripper
     result = ur5.gripper_service_call(False)
@@ -265,7 +311,7 @@ def main():
     print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
 
     # Removing the box from planning scene 	
-    ur5._scene.remove_world_object(ur5._box_name)
+    ur5._scene.remove_world_object(ur5._box_name)'''
   
 
     del ur5    
