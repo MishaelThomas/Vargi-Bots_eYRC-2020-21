@@ -74,6 +74,7 @@ class Ur5_moveit:
     
     def ee_cartesian_translation(self, trans_x, trans_y, trans_z):
         # 1. Create a empty list to hold waypoints
+        #self._group.set_planning_time(99)
         waypoints = []
         
         pose_values = self._group.get_current_pose().pose
@@ -102,17 +103,37 @@ class Ur5_moveit:
         waypoints.append(copy.deepcopy(wpose))
         print('------------waypoints ------------------')
         print(waypoints)
-
-        # 5. Compute Cartesian Path connecting the waypoints in the list of waypoints
-        (plan, fraction) = self._group.compute_cartesian_path(
+        tries=100
+        attempts=0
+        fraction=0.0
+        # 5. Compute Cartesian Path connecting the waypoints in the list of waypointis
+        while fraction<1 and attempts<tries:
+            (plan, fraction) = self._group.compute_cartesian_path(
             waypoints,   # waypoints to follow
             0.01,        # Step Size, distance between two adjacent computed waypoints will be 1 cm
-            0.0)         # Jump Threshold
-        rospy.loginfo("Path computed successfully. Moving the arm.")
+            0.0,True)
+            print("-----fraction---")
+            print(fraction)
+            print("---printed")
+            attempts=attempts+1
+        # Jump Threshold
+        
+        if(fraction>=1.0):
+            rospy.loginfo("Path computed successfully. Moving the arm.")
+            num_pts = len(plan.joint_trajectory.points)
+            print('------------plan ------------------')
+            print(plan.joint_trajectory.points)
+            if (num_pts >= 3):
+                del plan.joint_trajectory.points[0]
+                del plan.joint_trajectory.points[1]
+            #del plan.joint_trajectory.points[2]
+            self._group.execute(plan,wait=True)
+        else:
+            rospy.loginfo("could not compute successfully")
 
         # The reason for deleting the first two waypoints from the computed Cartisian Path can be found here,
         # https://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/?answer=257488#post-id-257488
-        num_pts = len(plan.joint_trajectory.points)
+        """num_pts = len(plan.joint_trajectory.points)
         print('------------plan ------------------')
         print(plan.joint_trajectory.points)
         if (num_pts >= 3):
@@ -130,7 +151,7 @@ class Ur5_moveit:
         self._display_trajectory_publisher.publish(display_trajectory);
 
         # 6. Make the arm follow the Computed Cartesian Path
-        self._group.execute(plan,wait=True)
+        self._group.execute(plan,wait=True)"""
         
         print('------------Final pose of EE------------------')
         pose_ee_wrt_world=self._group.get_current_pose().pose
@@ -252,7 +273,7 @@ orientation:
     wpose.orientation.z = 0.707402220467
     wpose.orientation.w = 7.89934095612e-05
     ur5.go_to_pose(wpose)'''
-    """wpose=ur5._group.get_current_pose().pose
+    wpose=ur5._group.get_current_pose().pose
     #wpose = geometry_msgs.msg.Pose()
     #wpose.position.x = -0.28
     #wpose.position.y = -0.218
@@ -263,12 +284,12 @@ orientation:
     wpose.orientation.w = 0.007353
     ur5.go_to_pose(wpose)
 
-    x,y,z=ur5.calculate_cartesian_path([-0.28,-0.218,1.19])
-    #ur5.ee_cartesian_translation(x,y,z)
-    pose_values = ur5._group.get_current_pose().pose
+    """x,y,z=ur5.calculate_cartesian_path([-0.28,-0.218,1.19])
+    ur5.ee_cartesian_translation(x,y,z)
+    pose_values = ur5._group.get_current_pose().pose"""
     #print("-----current pose-----")
     #print(pose_values)
-    
+    """
     wpose = geometry_msgs.msg.Pose()
     wpose.position.x = pose_values.position.x+x
     wpose.position.y = pose_values.position.y+y
@@ -287,19 +308,49 @@ orientation:
     #ur5.conveyor_belt_service_call(50)
     #ur5.init_pose()
     
-    package_pose = [(0.28,-0.218,1.867),
-    		(-0.280,-0.218,1.64),
-    		(0.00,-0.218,1.42),
-    		(0.28,-0.218,1.19),
-    		(-0.28,-0.218,1.867),
-    		(0.0,-0.218,1.64),
-    		(0.28,-0.218,1.42),
-    		(0,-0.218,1.19),
-    		(0.00,-0.218,1.867),
-    		(0.28,-0.218,1.64),
-    		(-0.28,-0.218,1.42),
-    		(-0.28,-0.218,1.19)] #package pose are in serial wise first four are red_boxes(0 to 3),then yellow,then green
-    joint_values=[]
+    package_pose = [(0.28,-0.2185,1.867),
+    		(-0.280,-0.2185,1.64),
+    		(0.00,-0.2185,1.42),
+    		(0.28,-0.2185,1.19),
+    		(-0.28,-0.2185,1.867),
+    		(0.0,-0.2185,1.64),
+    		(0.28,-0.2185,1.42),
+    		(0,-0.2185,1.19),
+    		(0.00,-0.2185,1.867),
+    		(0.28,-0.2185,1.64),
+    		(-0.28,-0.2185,1.42),
+    		(-0.28,-0.2185,1.19)]
+    
+    #package pose are in serial wise first four are red_boxes(0 to 3),then yellow,then green
+    joint_values=[-2.0939635597777393, -2.039775269802985, 1.7916300486682637, 0.23670112837617197, 1.0380217784575692, -1.5646336761168156]
+
+    x,y,z=package_pose[10]
+
+        #pose_values = ur5._group.get_current_pose().pose
+
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x =  x
+    wpose.position.y =  y
+    wpose.position.z =  z
+    wpose.orientation.x = 0.707
+    wpose.orientation.y = -0.0
+    wpose.orientation.z = -0.707
+    wpose.orientation.w = 0.007353
+    ur5.go_to_pose(wpose)
+    joint_value=ur5._group.get_current_joint_values()
+    joint_values.append(joint_value)
+    print(joint_value)
+    
+    
+    #ur5._group.go(joint_values,wait=True)
+    ur5.gripper_service_call(True)
+    touch_links = ur5._robot.get_link_names(group=ur5._planning_group)
+    ur5._scene.attach_box(ur5._eef_link,"green_pkg.obj_3", touch_links = touch_links)
+    ur5._group.set_planning_time(99)
+    ur5.init_pose()
+    ur5.gripper_service_call(False)
+    
+    """
     for cuurent_pkg_pose in joint_values:
 
     	#ur5.init_pose()
@@ -323,7 +374,7 @@ orientation:
         #ur5._group.go(joint_value,wait=True)
 
 
-    print(joint_values)
+    print(joint_values)"""
     """
     # List of packages that we want to pick
     pkg_list = ['packagen1','packagen2','packagen3']
