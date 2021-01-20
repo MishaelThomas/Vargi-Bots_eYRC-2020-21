@@ -5,7 +5,6 @@
 import rospy
 import sys
 import copy
-import math
 
 import moveit_commander
 import moveit_msgs.msg
@@ -39,7 +38,7 @@ class Ur5_moveit:
         self._exectute_trajectory_client = actionlib.SimpleActionClient( self._robot_ns + '/execute_trajectory', moveit_msgs.msg.ExecuteTrajectoryAction)
         self._exectute_trajectory_client.wait_for_server()
         
-        box_length = 0.15               # Length of the Package
+        box_length = 0.2               # Length of the Package
         vacuum_gripper_width = 0.115    # Vacuum Gripper Width
         self.delta = vacuum_gripper_width + (box_length/2) # 0.19
         
@@ -53,8 +52,8 @@ class Ur5_moveit:
         #rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,self.cb_capture_model)
     
         # Creating a handle to use Vacuum Gripper service
-        #rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
-        #self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
+        rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
+        self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
         
     
         # Creating a handle to use Conveyor Belt service with desired power
@@ -62,15 +61,6 @@ class Ur5_moveit:
         #self.conveyor_belt_service_call = rospy.ServiceProxy('/eyrc/vb/conveyor/set_power', conveyorBeltPowerMsg)
 
         rospy.loginfo('\033[94m' + " >>> Init done." + '\033[0m')
-
-    # Function: cb_capture_model() is the callback function for the subscriber to ROS topic "/eyrc/vb/logical_camera_2".
-    # It updates the node with models recently scanned by logical camera
-    '''def cb_capture_model(self, model):
-        self.model=model
-    	if model.models != [] and model.models
-    		rospy.loginfo('\033[96m' + str(model.models[0].type) + '\033[0m')
-    		self.model_type = model.models[0].type
-    		self.model_pose = model.models[0].pose'''
 
     
     def ee_cartesian_translation(self, trans_x, trans_y, trans_z):
@@ -93,11 +83,10 @@ class Ur5_moveit:
         wpose.orientation.y = pose_values.orientation.y
         wpose.orientation.z = pose_values.orientation.z
         wpose.orientation.w = pose_values.orientation.w'''
-        wpose.orientation.x = -0.706811211785
-        wpose.orientation.y = -5.59655056263e-05
-        wpose.orientation.z = 0.707402220467
-        wpose.orientation.w = 7.89934095612e-05
-
+        wpose.orientation.x = 0.707
+        wpose.orientation.y = -0.0
+        wpose.orientation.z = -0.707
+        wpose.orientation.w = 0.00735
 
         # 4. Add the new waypoint to the list of waypoints
         waypoints.append(copy.deepcopy(wpose))
@@ -118,7 +107,7 @@ class Ur5_moveit:
         print(plan.joint_trajectory.points)
         if (num_pts >= 3):
             del plan.joint_trajectory.points[0]
-            del plan.joint_trajectory.points[0]
+            del plan.joint_trajectory.points[1]
             #del plan.joint_trajectory.points[2]
         
         print('------------modified plan ------------------')
@@ -128,10 +117,10 @@ class Ur5_moveit:
         display_trajectory.trajectory_start = self._robot.get_current_state()
         display_trajectory.trajectory.append(plan)
         # Publish
-        self._display_trajectory_publisher.publish(display_trajectory)
+        self._display_trajectory_publisher.publish(display_trajectory);
 
         # 6. Make the arm follow the Computed Cartesian Path
-        self._group.execute(plan)
+        self._group.execute(plan,wait=True)
         
         print('------------Final pose of EE------------------')
         pose_ee_wrt_world=self._group.get_current_pose().pose
@@ -143,9 +132,7 @@ class Ur5_moveit:
         pose_ee_wrt_world=self._group.get_current_pose().pose
         print(pose_ee_wrt_world)
         
-        cartesian_path=(package_pose_wrt_world[0]-pose_ee_wrt_world.position.x, 
-                        package_pose_wrt_world[1]-pose_ee_wrt_world.position.y-7+self.delta, 
-                        package_pose_wrt_world[2]-pose_ee_wrt_world.position.z)
+        cartesian_path=(package_pose_wrt_world[0]-pose_ee_wrt_world.position.x, package_pose_wrt_world[1]-pose_ee_wrt_world.position.y, package_pose_wrt_world[2]-pose_ee_wrt_world.position.z)
         
         print("---------Cartesian path--------------")
         print(cartesian_path)
@@ -158,9 +145,8 @@ class Ur5_moveit:
         self.ee_cartesian_translation(x,y,z)
         #self.gripper_service_call(True)
 
-    def init_pose(self,joint_angles):
-        #joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
-        
+    def init_pose(self):
+        joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
         self._group.go(joint_angles,wait=True)
     
     def go_to_pose(self, arg_pose):
@@ -212,180 +198,106 @@ class Ur5_moveit:
         #self.conveyor_belt_service_call(27)
         #self.init_pose()'''
 
+    
+'''   
+    joint_values=[[-0.9742846406182437, -0.9917583362181022, -0.3044312064171226, -1.8589697757597214, -2.1563512010967676, 1.562280573474328], 
+                    [0.9742668182429552, -1.4659269066858105, -1.4609586675319859, -0.20311025825669926, 2.1767961072848934, 1.5780870003597052], 
+                    [2.0954672572238664, -1.1040302206419952, -2.2779576933540033, 0.2519873900043903, 1.055668843381759, 1.5649762425172211], 
+                    [2.792818737494608, -1.9273700150774529, -2.273842564851071, 1.087400283762733, 0.35908518601560413, 1.5456822723922903], 
+                    [0.9741739402203127, -1.856966303326617, -0.30608721592726873, -0.9653763570206557, 2.177579536797378, 1.5777966536990968], 
+                    [2.0951560955520137, -1.126527612354514, -1.697611650156361, -0.3049292783573261, 1.0567490774496333, 1.5635946458394425],
+                    [2.792597493184873, -1.5078921387304458, -1.9931345143800385, 0.38836144543341167, 0.3603945307919565, 1.5431553344050633], 
+                    [2.0954113312191396, -1.6856253856031262, -2.6584439240320856, 1.2149635676408872, 1.0557889131097546, 1.5642165738563092], 
+                    [2.0952084811952663, -1.455065190717173, -0.7708972822471774, -0.9025718084162104, 1.0564405059662603, 1.5637454983483776],
+                    [2.792616491595858, -1.4698850830415804, -1.4572608030846084, -0.18533835408597987, 0.3604727669817427, 1.542679965686629], 
+                    [0.9742738087282525, -1.4479008357650365, -1.5565234162766242, 3.0176299371242905, -2.1772563045227624, -1.5642725992780422], 
+                    [-2.7925244938701477, -1.6041027166316688, 2.0787888506688716, -0.5056704658566646, 0.338095847211874, -1.5413858371296545]
+                    ]
+    joint_values1 = [[0.9741739402203127, -1.856966303326617, -0.30608721592726873, -0.9653763570206557, 2.177579536797378, 1.5777966536990968], 
+                    [-2.792829775861766, -1.2775112171128802, 0.29464571137468365, -2.188389717471538, -0.3388635928051169, 1.599719828699656], 
+                    [2.792597493184873, -1.5078921387304458, -1.9931345143800385, 0.38836144543341167, 0.3603945307919565, 1.5431553344050633], 
+                    [2.0954113312191396, -1.6856253856031262, -2.6584439240320856, 1.2149635676408872, 1.0557889131097546, 1.5642165738563092], 
+                    [-2.0949727848547433, -2.015286673961919, 1.6977560370475588, -2.835937375719584, -1.0370184643197167, 1.575820093473328],
+                    ]            
+    
+    for joint_value in joint_values:
+        ur5._group.go(joint_value,wait=True)
+        print('done')
+        print(joint_value)'''
 def main():
     
     # Creating an object of Ur5_moveit class
     ur5 = Ur5_moveit()
-    #ur5.go_to_predefined_pose("straightUp")
-    #ur5.go_to_predefined_pose("allZeros")
-    '''pose_values = ur5._group.get_current_pose().pose
-    print(pose_values)
-    joint_values=ur5._group.get_current_joint_values()
-    print(joint_values)'''
-    '''STRAIGHT UP
-    position: 
-  x: 0.0952678525115
-  y: 0.109172185771
-  z: 1.85633654969
-orientation: 
-  x: -0.000102824460388
-  y: 0.707365978999
-  z: 6.18392670866e-05
-  w: 0.706847478143
-
-    lst_joint_angles_1=[-2.7869520887002244, -1.644141704569205, 1.982549083095181, 2.8052613005103098, -0.35381797364769074, 3.138701773800692]
-    ur5.init_pose(lst_joint_angles_1)'''
-    #ur5.pick_pkg([0,6.589954,1.647499])
-    #ur5.ee_cartesian_translation(0.817242,0.108936,0.944310)
+    package_pose = [(0.28,-0.218,1.867),
+    		(-0.280,-0.218,1.64),
+    		(0.00,-0.218,1.42),
+    		(0.28,-0.218,1.19),
+    		(-0.28,-0.218,1.867),
+    		(0.0,-0.218,1.64),
+    		(0.28,-0.218,1.42),
+    		(0,-0.218,1.19),
+    		(0.00,-0.218,1.867),
+    		(0.28,-0.218,1.64),
+    		(-0.28,-0.218,1.42),
+    		(-0.28,-0.218,1.19)] #package pose are in serial wise first four are red_boxes(0 to 3),then yellow,then green
     
-    '''wpose = geometry_msgs.msg.Pose()
-    wpose.position.x = 0.232207335449
-    wpose.position.y = -0.214327922571
-    wpose.position.z = 1.89485233305
-    wpose.orientation.x = -0.706811211785
-    wpose.orientation.y = -5.59655056263e-05
-    wpose.orientation.z = 0.707402220467
-    wpose.orientation.w = 7.89934095612e-05
-    ur5.go_to_pose(wpose)'''
-    
-    '''wpose = geometry_msgs.msg.Pose()
-    wpose.position.x = 0.0
-    wpose.position.y = -0.220046
-    wpose.position.z = 1.647499
-    wpose.orientation.x = -0.706811211785
-    wpose.orientation.y = 0.0
-    wpose.orientation.z = 0.707402220467
-    wpose.orientation.w = 0.0
-    ur5.go_to_pose(wpose)'''
-    
-    '''x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.427499])
-    pose_values = ur5._group.get_current_pose().pose
-    wpose = geometry_msgs.msg.Pose()
-    wpose.position.x = pose_values.position.x + x
-    wpose.position.y = pose_values.position.y + y
-    wpose.position.z = pose_values.position.z + z
-    wpose.orientation.x = -0.9999997
-    wpose.orientation.y = 0
-    wpose.orientation.z = 0
-    wpose.orientation.w = 0.0007963
-    ur5.go_to_pose(wpose)'''
-    '''joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
-        
-    ur5.gripper_service_call(True)
-    rospy.sleep(1)
-    #ur5.conveyor_belt_service_call(50)
-    ur5.init_pose(joint_angles)
-    ur5.gripper_service_call(False)
-    ur5.conveyor_belt_service_call(50)
-    rospy.sleep(1)
-    ur5.conveyor_belt_service_call(0)'''
-    '''package_pose = [[0.28,6.59,1.917499],
-    		[0,6.59,1.917499],
-    		[-0.28,6.59,1.917499],
-    		[0.28,6.589954,1.647499],
-    		[0,6.589954,1.647499],
-    		[-0.28,6.589954,1.647499],
-    		[0.28,6.589954,1.427499],
-    		[0,6.589954,1.427499],
-    		[-0.28,6.589954,1.427499],
-    		[0.28,6.589954,1.197499],
-    		[0,6.589954,1.197499],
-    		[-0.28,6.589954,1.197499]]
-    
+    '''package_pose = [(0.00,-0.218,1.867),
+    		(0.0,-0.218,1.64)]'''
     joint_values = []
-
     for current_pkg_pose in package_pose:
-    	
-    	x,y,z=ur5.calculate_cartesian_path(current_pkg_pose)
-    	
-        pose_values = ur5._group.get_current_pose().pose
+
+    	x,y,z=current_pkg_pose
         
         wpose = geometry_msgs.msg.Pose()
-        wpose.position.x = pose_values.position.x + x  
-        wpose.position.y = pose_values.position.y + y
-        wpose.position.z = pose_values.position.z + z
-        wpose.orientation.x = -0.9999997
-        wpose.orientation.y = 0
-        wpose.orientation.z = 0
-        wpose.orientation.w = 0.0007963
+        wpose.position.x =  x  
+        wpose.position.y =  y
+        wpose.position.z =  z
+        wpose.orientation.x = 0.707
+        wpose.orientation.y = -0.0
+        wpose.orientation.z = -0.707
+        wpose.orientation.w = 0.007353
         ur5.go_to_pose(wpose)
-
         joint_value=ur5._group.get_current_joint_values()
         joint_values.append(joint_value)
+        #ur5._group.go(joint_value,wait=True)
 
-    print(joint_values)'''
 
-    """
-    # List of packages that we want to pick
-    pkg_list = ['packagen1','packagen2','packagen3']
+    print(joint_values)
+    '''
+    ur5._box_name = 'packagen21'
+    ur5._box_pose = geometry_msgs.msg.PoseStamped()
     
-    # Handle for subscibing to ROS topic "/eyrc/vb/logical_camera_2"
-    rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,ur5.cb_capture_model)
+    ur5._box_pose.header.frame_id = "world"	
+    ur5._box_pose.pose.position.x = 0.0
+    ur5._box_pose.pose.position.y = 6.589954 - 7
+    ur5._box_pose.pose.position.z = 1.427499
+    ur5._box_pose.pose.orientation.w = 1.0
+
+    service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
+
+	# Adding the box to the scene
+    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
+
+    joint_value = [2.0954672572238664, -1.1040302206419952, -2.2779576933540033, 0.2519873900043903, 1.055668843381759, 1.5649762425172211] 
+    ur5._group.go(joint_value,wait=True)
     
-    # Creating a handle to use Vacuum Gripper service
-    rospy.wait_for_service('/eyrc/vb/ur5_1/activate_vacuum_gripper')
-    gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5_1/activate_vacuum_gripper', vacuumGripper)
+    result = service_call(True)
+    touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
+    ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
+
+    print(ur5._scene.get_attached_objects([ur5._box_name]))
+    print(ur5._scene.get_known_object_names())
+
+    ur5.init_pose()
+
+    ur5._scene.remove_attached_object(ur5._eef_link, name=ur5._box_name)
     
-    # Creating a handle to use Conveyor Belt service with desired power
-    rospy.wait_for_service('/eyrc/vb/conveyor/set_power')
-    conveyor_belt_service_call = rospy.ServiceProxy('/eyrc/vb/conveyor/set_power', conveyorBeltPowerMsg)
-    
-    box_length = 0.15               # Length of the Package
-    vacuum_gripper_width = 0.115    # Vacuum Gripper Width
-    delta = vacuum_gripper_width + (box_length/2) # 0.19
-    
-    rospy.loginfo('\033[96m' + "BEGIN" + '\033[0m')
-    conveyor_belt_service_call(100)
-    
-    while not rospy.is_shutdown():    	
-    	# In case, one of the packages is detected
-    	if ur5.model_type in pkg_list:   
-    		
-    		# curr_pkg: a variable that stores details of detected package
-    		curr_pkg = ur5.model_type
-    		
-    		# Breaking the power supply of conveyor belt
-    		rospy.sleep(0.5)
-    		conveyor_belt_service_call(0)
-    		rospy.loginfo('\033[96m' + "STOP" + '\033[0m')
-    		
-    		# Determining the pick pose for ur5 arm using the pose of package obtained from logical camera
-    		pos = ur5.model_pose.position
-    		ur5_2_pick_pose = geometry_msgs.msg.Pose()
-    		ur5_2_pick_pose.position.x = -0.8 + pos.z
-    		ur5_2_pick_pose.position.y = pos.y - 0.05
-    		ur5_2_pick_pose.position.z = 2 + delta - pos.x
-    		ur5_2_pick_pose.orientation.x = -0.5
-    		ur5_2_pick_pose.orientation.y = -0.5
-    		ur5_2_pick_pose.orientation.z = 0.5
-    		ur5_2_pick_pose.orientation.w = 0.5
-    		ur5.go_to_pose(ur5_2_pick_pose)
-    		rospy.loginfo('\033[96m' + "pick pose reached!!" + '\033[0m')
-    		rospy.loginfo('\033[96m' + str(ur5_2_pick_pose) + '\033[0m')
-    		rospy.loginfo('\033[96m' + str(pos) + '\033[0m')
-    		
-    		# Activating the vacuum gripper
-    		rospy.sleep(1)
-    		gripper_service_call(True)
-    		rospy.loginfo('\033[96m' + "ATTACHED" + '\033[0m')
-    		
-    		# Placing the packages in assigned bins
-    		if curr_pkg == 'packagen1':
-    			ur5.place_pkg("Red")
-    		elif curr_pkg == 'packagen2':
-    			ur5.place_pkg("Green")
-    		elif curr_pkg == 'packagen3':
-    			ur5.place_pkg("Blue")
-    		
-    		# Deactivating the gripper
-    		rospy.sleep(1)
-    		gripper_service_call(False)
-    		rospy.loginfo('\033[96m' + "DETACHED" + '\033[0m')
-    		
-    		# Resuming the power supply of conveyor belt
-    		conveyor_belt_service_call(100)
-   
-    # Removing the object of Ur5_moveit class"""
+    # Removing the box from planning scene 	
+    ur5._scene.remove_world_object(ur5._box_name)
+  
+    # Deactivating the Gripper
+    result = service_call(False)
+'''
     del ur5
 
 if __name__ == '__main__':
