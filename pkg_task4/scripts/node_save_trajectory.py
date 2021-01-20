@@ -118,6 +118,9 @@ class Ur5Moveit:
             0.0)         # Jump Threshold
         rospy.loginfo("Path computed successfully. Moving the arm.")
 
+
+        self._computed_plan = plan
+
         # The reason for deleting the first two waypoints from the computed Cartisian Path can be found here,
         # https://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/?answer=257488#post-id-257488
         num_pts = len(plan.joint_trajectory.points)
@@ -125,7 +128,6 @@ class Ur5Moveit:
             del plan.joint_trajectory.points[0]
             del plan.joint_trajectory.points[1]
 
-        self._computed_plan = self._group.plan()
         # 6. Make the arm follow the Computed Cartesian Path
         self._group.execute(plan)
 
@@ -210,8 +212,6 @@ def main():
     
     rospy.loginfo( "File saved at: {}".format(file_path) )
     
-    ur5._computed_plan = ''
-	
     x,y,z=ur5.calculate_cartesian_path([0,6.589954,1.427499])
     ur5.ee_cartesian_translation(x,y,z)
 
@@ -221,7 +221,7 @@ def main():
     with open(file_path, 'w') as file_save:
         yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
     
-    rospy.loginfo( "File saved at: {}".format(file_path) )
+    rospy.loginfo( "File saved at: {}".format(file_path) )'''
 
     result = ur5.gripper_service_call(True)
     touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
@@ -236,9 +236,8 @@ def main():
     with open(file_path, 'w') as file_save:
         yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
     
-    rospy.loginfo( "File saved at: {}".format(file_path) )'''
+    rospy.loginfo( "File saved at: {}".format(file_path) )
 
-    ur5._computed_plan = ''
     lst_joint_angles_2 = [0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
     ur5.set_joint_angles(lst_joint_angles_2)
     
@@ -249,6 +248,13 @@ def main():
 		yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
     
     rospy.loginfo( "File saved at: {}".format(file_path) )
+
+    result = ur5.gripper_service_call(False)
+    ur5._scene.remove_attached_object(ur5._eef_link, name=ur5._box_name)
+    print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
+
+    # Removing the box from planning scene 	
+    ur5._scene.remove_world_object(ur5._box_name)
 
     del ur5
 
