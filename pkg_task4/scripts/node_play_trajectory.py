@@ -41,8 +41,9 @@ class Ur5Moveit:
         self._group.set_planning_time(99)
 
         # Allow some leeway in position (meters) and orientation (radians)
-        self._group.set_goal_position_tolerance(0.01)
+        self._group.set_goal_position_tolerance(0.1)
         self._group.set_goal_orientation_tolerance(0.1)
+        self._group.set_goal_joint_tolerance(0.2)
 
         rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
@@ -144,11 +145,15 @@ def main():
 
     ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
 
+
     """rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
     ur5.moveit_play_planned_path_from_file(ur5._file_path, 'home_to_pkg21.yaml')"""
-    joint_value_0 = [-2.6011339293255, -2.3590931034680374, 1.8892899715041231, 0.32159706536877586, 0.47790973258301417, 0.036733309660952784]
-    ur5._group.go(joint_value_0,wait=True)
-	
+    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
+
+    rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'home_to_pkg21.yaml')
+
+
     rospy.logwarn("1. Playing cp21_pick Trajectory File")
     ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_pick.yaml')
 
@@ -157,12 +162,18 @@ def main():
     ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
     print(ur5.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=4))
 
-    
     rospy.logwarn("1. Playing cp21_place Trajectory File")
     ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_place.yaml')
-    
+
     rospy.logwarn("1. Playing pkg21_to_place Trajectory File")
     ur5.moveit_play_planned_path_from_file(ur5._file_path, 'pkg21_to_place.yaml')
+
+    result = ur5.gripper_service_call(False)
+    ur5._scene.remove_attached_object(ur5._eef_link, name=ur5._box_name)
+    print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
+
+    # Removing the box from planning scene 	
+    ur5._scene.remove_world_object(ur5._box_name)
 
     del ur5
 
