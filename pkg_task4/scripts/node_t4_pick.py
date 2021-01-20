@@ -5,6 +5,7 @@
 import rospy
 import sys
 import copy
+import math
 
 import moveit_commander
 import moveit_msgs.msg
@@ -148,7 +149,7 @@ class Ur5_moveit:
         display_trajectory.trajectory_start = self._robot.get_current_state()
         display_trajectory.trajectory.append(plan)
         # Publish
-        self._display_trajectory_publisher.publish(display_trajectory);
+        self._display_trajectory_publisher.publish(display_trajectory)
 
         # 6. Make the arm follow the Computed Cartesian Path
         self._group.execute(plan,wait=True)"""
@@ -163,7 +164,9 @@ class Ur5_moveit:
         pose_ee_wrt_world=self._group.get_current_pose().pose
         print(pose_ee_wrt_world)
         
-        cartesian_path=(package_pose_wrt_world[0]-pose_ee_wrt_world.position.x, package_pose_wrt_world[1]-pose_ee_wrt_world.position.y, package_pose_wrt_world[2]-pose_ee_wrt_world.position.z)
+        cartesian_path=(package_pose_wrt_world[0]-pose_ee_wrt_world.position.x, 
+                        package_pose_wrt_world[1]-pose_ee_wrt_world.position.y-7+self.delta, 
+                        package_pose_wrt_world[2]-pose_ee_wrt_world.position.z)
         
         print("---------Cartesian path--------------")
         print(cartesian_path)
@@ -176,8 +179,9 @@ class Ur5_moveit:
         self.ee_cartesian_translation(x,y,z)
         #self.gripper_service_call(True)
 
-    def init_pose(self):
-        joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
+    def init_pose(self,joint_angles):
+        #joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
+        
         self._group.go(joint_angles,wait=True)
     
     def go_to_pose(self, arg_pose):
@@ -249,9 +253,10 @@ orientation:
   y: 0.707365978999
   z: 6.18392670866e-05
   w: 0.706847478143
-'''
-    #ur5.init_pose()
-    #ur5.pick_pkg([0,6.589954,1.197499])
+
+    lst_joint_angles_1=[-2.7869520887002244, -1.644141704569205, 1.982549083095181, 2.8052613005103098, -0.35381797364769074, 3.138701773800692]
+    ur5.init_pose(lst_joint_angles_1)'''
+    #ur5.pick_pkg([0,6.589954,1.647499])
     #ur5.ee_cartesian_translation(0.817242,0.108936,0.944310)
     
     '''wpose = geometry_msgs.msg.Pose()
@@ -266,12 +271,12 @@ orientation:
     
     '''wpose = geometry_msgs.msg.Pose()
     wpose.position.x = 0.0
-    wpose.position.y = -0.23
+    wpose.position.y = -0.220046
     wpose.position.z = 1.647499
     wpose.orientation.x = -0.706811211785
-    wpose.orientation.y = -5.59655056263e-05
+    wpose.orientation.y = 0.0
     wpose.orientation.z = 0.707402220467
-    wpose.orientation.w = 7.89934095612e-05
+    wpose.orientation.w = 0.0
     ur5.go_to_pose(wpose)'''
     wpose=ur5._group.get_current_pose().pose
     #wpose = geometry_msgs.msg.Pose()
@@ -321,6 +326,7 @@ orientation:
     		(-0.28,-0.2185,1.42),
     		(-0.28,-0.2185,1.19)]
     
+<<<<<<< HEAD
     #package pose are in serial wise first four are red_boxes(0 to 3),then yellow,then green
     joint_values=[-2.0939635597777393, -2.039775269802985, 1.7916300486682637, 0.23670112837617197, 1.0380217784575692, -1.5646336761168156]
 
@@ -357,10 +363,52 @@ orientation:
     	#ur5.pick_pkg(current_pkg_pose)
     	#ur5.place_pkg()
     	x,y,z=current_pkg_pose
+=======
+    '''x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.427499])
+    pose_values = ur5._group.get_current_pose().pose
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x = pose_values.position.x + x
+    wpose.position.y = pose_values.position.y + y
+    wpose.position.z = pose_values.position.z + z
+    wpose.orientation.x = -0.9999997
+    wpose.orientation.y = 0
+    wpose.orientation.z = 0
+    wpose.orientation.w = 0.0007963
+    ur5.go_to_pose(wpose)'''
+    '''joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
+        
+    ur5.gripper_service_call(True)
+    rospy.sleep(1)
+    #ur5.conveyor_belt_service_call(50)
+    ur5.init_pose(joint_angles)
+    ur5.gripper_service_call(False)
+    ur5.conveyor_belt_service_call(50)
+    rospy.sleep(1)
+    ur5.conveyor_belt_service_call(0)'''
+    '''package_pose = [[0.28,6.59,1.917499],
+    		[0,6.59,1.917499],
+    		[-0.28,6.59,1.917499],
+    		[0.28,6.589954,1.647499],
+    		[0,6.589954,1.647499],
+    		[-0.28,6.589954,1.647499],
+    		[0.28,6.589954,1.427499],
+    		[0,6.589954,1.427499],
+    		[-0.28,6.589954,1.427499],
+    		[0.28,6.589954,1.197499],
+    		[0,6.589954,1.197499],
+    		[-0.28,6.589954,1.197499]]
+    
+    joint_values = []
+
+    for current_pkg_pose in package_pose:
+    	
+    	x,y,z=ur5.calculate_cartesian_path(current_pkg_pose)
+>>>>>>> af904abc59dda901ddfea39d191851f6a7e6ce18
     	
         #pose_values = ur5._group.get_current_pose().pose
         
         wpose = geometry_msgs.msg.Pose()
+<<<<<<< HEAD
         wpose.position.x =  x  
         wpose.position.y =  y
         wpose.position.z =  z
@@ -372,7 +420,21 @@ orientation:
         joint_value=ur5._group.get_current_joint_values()
         joint_values.append(joint_value)
         #ur5._group.go(joint_value,wait=True)
+=======
+        wpose.position.x = pose_values.position.x + x  
+        wpose.position.y = pose_values.position.y + y
+        wpose.position.z = pose_values.position.z + z
+        wpose.orientation.x = -0.9999997
+        wpose.orientation.y = 0
+        wpose.orientation.z = 0
+        wpose.orientation.w = 0.0007963
+        ur5.go_to_pose(wpose)
 
+        joint_value=ur5._group.get_current_joint_values()
+        joint_values.append(joint_value)
+>>>>>>> af904abc59dda901ddfea39d191851f6a7e6ce18
+
+    print(joint_values)'''
 
     print(joint_values)"""
     """
@@ -399,7 +461,7 @@ orientation:
     
     while not rospy.is_shutdown():    	
     	# In case, one of the packages is detected
-    	 6666663if ur5.model_type in pkg_list:   
+    	if ur5.model_type in pkg_list:   
     		
     		# curr_pkg: a variable that stores details of detected package
     		curr_pkg = ur5.model_type
