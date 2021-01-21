@@ -145,15 +145,15 @@ def main():
     ur5._group.go(joint_angles,wait=True)
 
     rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
-    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'place_to_pkg00.yaml',5)
+    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'place_to_pkg32.yaml',5)
 
     result = ur5.gripper_service_call(True)
 
     rospy.logwarn("1. Playing cp10_place Trajectory File")
-    #ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'cp01_place.yaml',5)
+    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'cp32_place.yaml',5)
 
     rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
-    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'pkg00_to_place.yaml',5)
+    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'pkg32_to_place.yaml',5)
 
     result = ur5.gripper_service_call(False)
 
