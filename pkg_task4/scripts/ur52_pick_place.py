@@ -28,11 +28,12 @@ class Ur5_moveit:
         rospy.init_node('node_task3_solution', anonymous=True)
         
         # Defining attributes required for MoveIt!
-        self._planning_group = "ur5_1_planning_group"
+        self._robot_ns="/ur5_2"
+        self._planning_group = "manipulator"
         self._commander = moveit_commander.roscpp_initialize(sys.argv)
-        self._robot = moveit_commander.RobotCommander()
-        self._scene = moveit_commander.PlanningSceneInterface()
-        self._group = moveit_commander.MoveGroupCommander(self._planning_group)
+        self._robot = moveit_commander.RobotCommander(robot_description= self._robot_ns + "/robot_description", ns=self._robot_ns)
+        self._scene = moveit_commander.PlanningSceneInterface(ns=self._robot_ns)
+        self._group = moveit_commander.MoveGroupCommander(self._planning_group, robot_description= self._robot_ns + "/robot_description", ns=self._robot_ns)
         box_length = 0.15               # Length of the Package
         vacuum_gripper_width = 0.115    # Vacuum Gripper Width
         self.delta = vacuum_gripper_width + (box_length/2) # 0.19
@@ -57,7 +58,7 @@ class Ur5_moveit:
         # Handle for subscibing to ROS topic "/eyrc/vb/logical_camera_2"
         rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,self.cb_capture_model)
         #Handle for subscribimg to ROS topic "ur51/picked_pkg_info"
-        rospy.Subscriber(""ur51/picked_pkg_info"",picked_pkg_info,self.cb_sent_pkg)
+        rospy.Subscriber("ur51/picked_pkg_info",picked_pkg_info,self.cb_sent_pkg)
         
         # Creating a handle to use Vacuum Gripper service
         rospy.wait_for_service('/eyrc/vb/ur5_1/activate_vacuum_gripper')
@@ -107,8 +108,6 @@ class Ur5_moveit:
 
 # function to control conveyer belt
     def control_conveyor_belt(self):
-        global pkg_picked
-        global all_pkg
         global work_done
         if (work_done):
             return
@@ -180,7 +179,7 @@ class Ur5_moveit:
 
     def pick_pkg(self,package_pose):
         x,y,z=self.calculate_cartesian_path(package_pose)
-        self.ee_cartesian_translation(x,y,z))
+        self.ee_cartesian_translation(x,y,z)
         self.gripper_service_call(True)
         
 
@@ -194,14 +193,12 @@ class Ur5_moveit:
         rospy.loginfo(
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
 
-    def place_pkg(self,package_name):
-        global all_pkg
-        global pkg_picked
-        if(package_name=="packagen1"):
+    def place_pkg(self,package_color):
+        if(package_color=="red"):
             joint_values=[-1.5722165746417147, -2.0156468764887974, -1.4441489746467298, -1.253079896204322, 1.5716701789574419, -1.5731922855980915]
-        if (package_name=="packagen2"):
+        if (package_color=="green"):
             joint_values=[-0.10597267010129219, -0.9232539830623159, 0.8675774939714938, -1.5159454519701585, -1.5716655689094967, 3.034847263597408]
-        if(package_name=="packagen3"):
+        if(package_color=="blue"):
             joint_values=[-1.677851795541076, -1.193402632379506, 1.2809171265671475, -1.6590883174733078, -1.5713969000516617, 1.4627511449783928]
         self._group.go(joint_values,wait=True)
         rospy.sleep(0.1)
@@ -226,7 +223,7 @@ def main():
                 package.type=self.sent_pkg.package_colour
         ur5.conveyor_belt_service_call(0)
         while (work_done):
-            if(!self.sent_pkg.task_done):
+            if(ur5.sent_pkg.task_done):
                 work_done=True
             ur5.pick_pkg(package.pose)
             pkg_picked.append(package.type)
@@ -305,7 +302,7 @@ def main():
     		conveyor_belt_service_call(100)
    
     # Removing the object of Ur5_moveit class
->>>>>>> b056369073f3e034f9454a3ecd4ab020c54f76ba
+>>>>>>> b056369073f3e034f9454a3ecd4ab020c54f76ba"""
     del ur5
 
 if __name__ == '__main__':

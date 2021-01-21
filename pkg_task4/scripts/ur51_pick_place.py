@@ -47,7 +47,7 @@ class Camera():
 
 
 
-    def get_qr_data(self):
+    def get_qr_data(self,data):
         global package_data
         try:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
@@ -214,12 +214,35 @@ class Ur5Moveit:
     def cb_capture_model(self, models):
         global package_data
         global task_status
-        if(len(model)>1):
-            for x in model:
+        if(len(models)>1):
+            for x in models:
                 if(x.type!="ur5"):
                     self.model=x
                     self._pkg_info_pub.publish(package_color=package_data[x.type],work_done=task_status)
                     self.rate.sleep()
+
+
+    #function to pick boxes from shelf and place them on conveyer belt
+    def pick_place(self,pkg_to_pick):
+        if(pkg_to_pick=="package21"):
+            rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
+            self.moveit_play_planned_path_from_file(self._file_path, 'home_to_pkg21.yaml')
+            rospy.logwarn("1. Playing cp21_pick Trajectory File")
+            self.moveit_play_planned_path_from_file(self._file_path, 'cp21_pick.yaml')
+            result = self.gripper_service_call(True)
+            touch_links = self._robot.get_link_names(group=self._planning_group)  
+            ur5._scene.attach_box(self._eef_link,"red_pkg.obj_2", touch_links = touch_links)
+            print(ur5.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=4))
+            rospy.logwarn("1. Playing cp21_place Trajectory File")
+            ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_place.yaml')
+            rospy.logwarn("1. Playing pkg21_to_place Trajectory File")
+            ur5.moveit_play_planned_path_from_file(ur5._file_path, 'pkg21_to_place.yaml')
+            result = ur5.gripper_service_call(False)
+            ur5._scene.remove_attached_object(ur5._eef_link, name="red_pkg.obj_2")
+            print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
+
+
+
 
     # Destructor
 
@@ -236,7 +259,7 @@ def main():
     2d_camera=Camera()
     rospy.sleep(10)
     shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
-    2d_camera.get_qr_data()
+    2d_camera.get_qr_data(shelf_image)
     no_pkg_to_pick=9
     pkg_picked_placed=0
     pkg_to_pick=['packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen22', 'packagen30', 'packagen32', 'packagen33']
@@ -248,7 +271,8 @@ def main():
     if(pkg_picked_placed==no_pkg_to_pick):
         task_status=True
 
-    
+
+    del ur5
 
     
     """
