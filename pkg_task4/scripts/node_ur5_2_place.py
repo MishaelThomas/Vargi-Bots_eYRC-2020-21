@@ -39,7 +39,8 @@ package_data = {'packagen00':'',
                 'packagen32':''}
 
 # A list of packages that are sent by ur5_1 arm and needs to be sorted out
-pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen30', 'packagen32', 'packagen01']
+pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21',
+             'packagen30', 'packagen32', 'packagen01']
 # A list to keep a check on packages sorted
 pkg_picked=[]
 
@@ -102,7 +103,7 @@ class Camera():
 
 
 # Ur5_moveit class for sorting the packages
-class Ur5_moveit:
+class Ur5_Moveit:
 
     # Constructor
     def __init__(self):
@@ -155,7 +156,6 @@ class Ur5_moveit:
     def cb_capture_model(self, model):
         self.model=model
 
-
     # Function: go_to_pose() controls the ur5 arm and takes it to the provided position and orientation
     def go_to_pose(self, arg_pose):
 
@@ -167,6 +167,8 @@ class Ur5_moveit:
 
         # Commanding ur5 arm to head towards desired position
         self._group.set_pose_target(arg_pose)
+        
+        # Confirming that go_to_pose is executed
         while   attempts < 3 and (not flag_plan):
             flag_plan = self._group.go(wait=True)  # wait=False for Async Move
             attempts += 1
@@ -190,21 +192,24 @@ class Ur5_moveit:
 
 
         
-    
+    # calculate_cartesian_path function provides the exact position of package using the frame of logical_camera_2 
     def calculate_cartesian_path (self,package_pose_wrt_camera): 
         
+        # Transforming the package position from logical camera's frame
         pose_package_wrt_world=[-0.8+package_pose_wrt_camera.position.z,
                                 package_pose_wrt_camera.position.y,
                                 2-package_pose_wrt_camera.position.x]
         
         pose_ee_wrt_world=self._group.get_current_pose().pose
         
+        # Distance to be translated by the ur5 arm is determined below
         cartesian_path=(pose_package_wrt_world[0]-pose_ee_wrt_world.position.x,
                         pose_package_wrt_world[1]-pose_ee_wrt_world.position.y,
                         pose_package_wrt_world[2]-pose_ee_wrt_world.position.z+self.delta)
         
         return cartesian_path
 
+    # This function calculates the distance to move and attaches the package
     def pick_pkg(self,package_pose):
         x,y,z = self.calculate_cartesian_path(package_pose)
         
@@ -219,21 +224,18 @@ class Ur5_moveit:
         wpose.orientation.w = 0.5
         self.go_to_pose(wpose)
 
+        # Attaching the package
         self.gripper_service_call(True)
         
+    # Function to take ur5 arm to specified joint angles
     def set_joint_angles(self, arg_list_joint_angles):
 
-		list_joint_values = self._group.get_current_joint_values()
-		# rospy.loginfo('\033[94m' + ">>> Current Joint Values:" + '\033[0m')
-		# rospy.loginfo(list_joint_values)
-
 		self._group.set_joint_value_target(arg_list_joint_angles)
-		self._computed_plan = self._group.plan()
 		flag_plan = self._group.go(wait=True)
-		print(type(self._computed_plan))
 
 		return flag_plan
 
+    # Function to confirm set_joint_angles() is a success
     def hard_set_joint_angles(self, arg_list_joint_angles, arg_max_attempts):
 
 		number_attempts = 0
@@ -244,10 +246,12 @@ class Ur5_moveit:
 			flag_success = self.set_joint_angles(arg_list_joint_angles)
 			rospy.logwarn("attempts: {}".format(number_attempts) )
 
+    # Function to take ur5 to an intial pose from where picking will be easier
     def initial_pose(self):
         joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
         self.hard_set_joint_angles(joint_angles,3)
 
+    # This function sorts the attached package on the basis of its color and calls hard_set_joint_angles() to execute the same
     def place_pkg(self,package_name):
         global package_data
         package_color = package_data[package_name]
@@ -277,15 +281,21 @@ class Ur5_moveit:
 def main():
     
     # Creating an object of Ur5_moveit class
-    ur5_2 = Ur5_moveit()
+    ur5_2 = Ur5_Moveit()
 
+    # Creating an object of Camera class
     camera2D = Camera()
     shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
+    
+    # Updating the packages dictionary using QR Decoding
     camera2D.get_qr_data(shelf_image)
 
+    # Initiating the conveyor belt and heading ur5 arm towards initial pick position 
     ur5_2.conveyor_belt_service_call(100)
     ur5_2.initial_pose()
 
+    # This loop is used to reach to detected packages, attaching them to ur5 arm using pick_pkg() and sorting 
+    # them using place_pkg(). Meanwhile it stops the conveyor belt.
     while len(pkg_picked) != len(pkg_to_pick):        
         
         if len(ur5_2.model.models) > 1:
@@ -302,8 +312,10 @@ def main():
                     ur5_2.conveyor_belt_service_call(100)
                     ur5_2.initial_pose()
     
+    # Removing the object of Ur5_Moveit class
     del ur5_2
 
+# main() is implemented when we execute this python file
 if __name__ == '__main__':
     main()
     

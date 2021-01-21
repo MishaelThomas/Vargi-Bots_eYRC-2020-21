@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 
 ''' Importing necessary modules for using Moveit Motion Planning framework,
-    implementing ROS Action commands,
-    Playing saved trajectories'''
+    implementing ROS Action commands and Playing saved trajectories'''
 
 import rospy
 import moveit_commander
