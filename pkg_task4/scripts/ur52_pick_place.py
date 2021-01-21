@@ -11,6 +11,12 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 from pkg_task4.msg import picked_pkg_info
+import rospkg
+import cv2
+from std_msgs.msg import String
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+from pyzbar.pyzbar import decode
 
 # Service files are required for implementing Vacuum Gripper and Conveyor Belt. Hence, we can use Ros Service to execute them
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
@@ -19,6 +25,75 @@ from pkg_vb_sim.srv import conveyorBeltPowerMsg, conveyorBeltPowerMsgRequest, co
 # Importing msg file for obtaining the feed of Logical camera
 from pkg_vb_sim.msg import LogicalCameraImage
 work_done=False
+package_data = {'packagen00':'',
+                                                                                'packagen01':'',
+                                                                                'packagen02':'',
+                                                                                'packagen10':'',
+                                                                                'packagen11':'',
+                                                                                'packagen12':'',
+                                                                                'packagen20':'',
+                                                                                'packagen21':'',
+                                                                                'packagen22':'',
+                                                                                'packagen30':'',
+                                                                                'packagen31':'',
+                                                                                'packagen32':'',}
+
+pkg_to_pick=[]
+pkg_picked=[]
+
+class Camera():
+    def __init__(self):
+        self.bridge = CvBridge()
+
+
+
+
+
+
+    def get_qr_data(self,data):
+        global package_data
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+        except CvBridgeError as e:
+            rospy.logerr(e)
+        image=cv_image*1.5999999999999998667732370449812151491641998291015625
+
+        qr_result = decode(image)
+
+        if ( len( qr_result ) > 0):
+            for i in range(0, len(qr_result)):
+                if qr_result[i].rect.left in range(125,131):
+                    if qr_result[i].rect.top in range(313,317):
+                        package_data["packagen00"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(494,499):
+                        package_data["packagen10"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(640,645):
+                        package_data["packagen20"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(795,800):
+                        package_data["packagen30"] = str(qr_result[i].data)
+                elif qr_result[i].rect.left in range(313,319):
+                    if qr_result[i].rect.top in range(313,317):
+                        package_data["packagen01"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(494,499):
+                        package_data["packagen11"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(640,645):
+                        package_data["packagen21"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(795,800):
+                        package_data["packagen31"] = str(qr_result[i].data)
+
+                elif qr_result[i].rect.left in range(499,506):
+                    if qr_result[i].rect.top in range(313,317):
+                        package_data["packagen02"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(494,499):
+                        package_data["packagen12"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(640,645):
+                        package_data["packagen22"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(795,800):
+                        package_data["packagen32"] = str(qr_result[i].data)
+
+
+
+
 class Ur5_moveit:
 
     # Constructor
@@ -52,13 +127,10 @@ class Ur5_moveit:
         self.currentpose=self._group.get_current_pose().pose
         # Initializing the attributes obtained from Logical camera
         self.model=LogicalCameraImage()
-        #Initializing the attributes obtained from topic "ur51/picked_pkg_info"
-        self.sent_pkg=picked_pkg_info()
 
         # Handle for subscibing to ROS topic "/eyrc/vb/logical_camera_2"
         rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,self.cb_capture_model)
         #Handle for subscribimg to ROS topic "ur51/picked_pkg_info"
-        rospy.Subscriber("ur51/picked_pkg_info",picked_pkg_info,self.cb_sent_pkg)
         
         # Creating a handle to use Vacuum Gripper service
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_2',timeout=1)
@@ -75,8 +147,6 @@ class Ur5_moveit:
     def cb_capture_model(self, model):
         self.model=model
 
-    def cb_sent_pkg(self,data):
-        self.sent_pkg=data
 
     # Function: go_to_pose() controls the ur5 arm and takes it to the provided position and orientation
     def go_to_pose(self, arg_pose):
@@ -109,6 +179,7 @@ class Ur5_moveit:
 # function to control conveyer belt
     def control_conveyor_belt(self):
         global work_done
+        global pkg_picked
         if (work_done):
             return
         self.conveyor_belt_service_call(100)
@@ -193,7 +264,9 @@ class Ur5_moveit:
         rospy.loginfo(
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
 
-    def place_pkg(self,package_color):
+    def place_pkg(self,package_name):
+        global package_data
+        package_color=package_data['package_name']
         if(package_color=="red"):
             joint_values=[-1.5722165746417147, -2.0156468764887974, -1.4441489746467298, -1.253079896204322, 1.5716701789574419, -1.5731922855980915]
         if (package_color=="green"):
@@ -209,7 +282,13 @@ def main():
     
     # Creating an object of Ur5_moveit class
     global work_done
+    global pkg_picked
+    global pkg_to_pick
     ur5=Ur5_moveit()
+    shelf_camera=Camera()
+    rospy.sleep(10)
+    shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
+    shelf_camera.get_qr_data(shelf_image)
     print("i am on")
     while not rospy.is_shutdown():
         ur5.init_pose()
@@ -221,14 +300,13 @@ def main():
         for x in ur5.model.models:
             if x.type != "ur5":
                 package=x
-                package.type=self.sent_pkg.package_colour
         ur5.conveyor_belt_service_call(0)
-        while (work_done):
-            if(ur5.sent_pkg.task_done):
+        while (not work_done):
+            if(len(pkg_picked)<len(pkg_to_pick)):
                 work_done=True
             ur5.pick_pkg(package.pose)
             pkg_picked.append(package.type)
-            thread1=threading.Thread(target=ur5.place_pkg,args=(pkg,))
+            thread1=threading.Thread(target=ur5.place_pkg,args=(package.type,))
             thread2=threading.Thread(target=ur5.control_conveyor_belt)
             thread1.start()
             thread2.start()
