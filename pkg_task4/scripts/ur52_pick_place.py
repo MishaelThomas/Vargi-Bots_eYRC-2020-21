@@ -25,7 +25,7 @@ class Ur5_moveit:
     def __init__(self):
 
         # Initializing the ROS node.
-        rospy.init_node('node_task3_solution', anonymous=True)
+        rospy.init_node('node_task4_solution', anonymous=True)
         
         # Defining attributes required for MoveIt!
         self._robot_ns="/ur5_2"
@@ -38,12 +38,12 @@ class Ur5_moveit:
         vacuum_gripper_width = 0.115    # Vacuum Gripper Width
         self.delta = vacuum_gripper_width + (box_length/2) # 0.19
         # Handle to publish planned path on ROS topic '/move_group/display_planned_path'
-        self._display_trajectory_publisher = rospy.Publisher(
+        self._display_trajectory_publisher = rospy.Publisher(self._robot_ns+
             '/move_group/display_planned_path', moveit_msgs.msg.DisplayTrajectory, queue_size=1)
         
         # Handle to execute planned path using ROS action client
-        self._exectute_trajectory_client = actionlib.SimpleActionClient(
-            'execute_trajectory', moveit_msgs.msg.ExecuteTrajectoryAction)
+        self._exectute_trajectory_client = actionlib.SimpleActionClient(self._robot_ns+
+            '/execute_trajectory', moveit_msgs.msg.ExecuteTrajectoryAction)
         self._exectute_trajectory_client.wait_for_server()
         
         self._planning_frame = self._group.get_planning_frame()
@@ -61,8 +61,8 @@ class Ur5_moveit:
         rospy.Subscriber("ur51/picked_pkg_info",picked_pkg_info,self.cb_sent_pkg)
         
         # Creating a handle to use Vacuum Gripper service
-        rospy.wait_for_service('/eyrc/vb/ur5_1/activate_vacuum_gripper')
-        self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5_1/activate_vacuum_gripper', vacuumGripper)
+        rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_2',timeout=1)
+        self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_2', vacuumGripper)
     
         # Creating a handle to use Conveyor Belt service with desired power
         rospy.wait_for_service('/eyrc/vb/conveyor/set_power')
@@ -210,6 +210,7 @@ def main():
     # Creating an object of Ur5_moveit class
     global work_done
     ur5=Ur5_moveit()
+    print("i am on")
     while not rospy.is_shutdown():
         ur5.init_pose()
         ur5.conveyor_belt_service_call(100)

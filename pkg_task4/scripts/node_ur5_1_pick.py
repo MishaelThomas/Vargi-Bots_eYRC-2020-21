@@ -15,13 +15,16 @@ import sys
 import copy
 
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
+from pkg_vb_sim.msg import LogicalCameraImage
+
+task_status=False
 
 class Ur5Moveit:
 
     # Constructor
     def __init__(self):
 
-        rospy.init_node('node_moveit_eg6', anonymous=True)
+        rospy.init_node('node_ur5_1_pick', anonymous=True)
 
         self._robot_ns = '/ur5_1'
         self._planning_group = "manipulator"
@@ -33,22 +36,14 @@ class Ur5Moveit:
         self._display_trajectory_publisher = rospy.Publisher( self._robot_ns + '/move_group/display_planned_path', moveit_msgs.msg.DisplayTrajectory, queue_size=1)
         self._exectute_trajectory_client = actionlib.SimpleActionClient( self._robot_ns + '/execute_trajectory', moveit_msgs.msg.ExecuteTrajectoryAction)
         self._exectute_trajectory_client.wait_for_server()
-
+    
         self._planning_frame = self._group.get_planning_frame()
         self._eef_link = self._group.get_end_effector_link()
         self._group_names = self._robot.get_group_names()
-
-        self._group.set_planning_time(99)
-
-        # Allow some leeway in position (meters) and orientation (radians)
         
-
-        rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
+        rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
-
-        # Current State of the Robot is needed to add box to planning scene
-        self._curr_state = self._robot.get_current_state()
-
+        
         rospy.loginfo(
             '\033[94m' + "Planning Group: {}".format(self._planning_frame) + '\033[0m')
         rospy.loginfo(
@@ -74,7 +69,7 @@ class Ur5Moveit:
 		ret = self._group.execute(loaded_plan)
 		# rospy.logerr(ret)
 		return ret
-
+    
     def moveit_hard_play_planned_path_from_file(self, arg_file_path, arg_file_name, arg_max_attempts):
 		number_attempts = 0
 		flag_success = False
@@ -87,66 +82,80 @@ class Ur5Moveit:
 		
 		return True
 
-    def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-        box_name = self._box_name
-        scene = self._scene
+    #function to pick boxes from shelf and place them on conveyer belt
+    def pick_place(self,pkg_to_pick):
+        
+        if(pkg_to_pick=="packagen31"):
 
-        ## BEGIN_SUB_TUTORIAL wait_for_scene_update
-        ##
-        ## Ensuring Collision Updates Are Receieved
-        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        ## If the Python node dies before publishing a collision object update message, the message
-        ## could get lost and the box will not appear. To ensure that the updates are
-        ## made, we wait until we see the changes reflected in the
-        ## ``get_attached_objects()`` and ``get_known_object_names()`` lists.
-        ## For the purpose of this tutorial, we call this function after adding,
-        ## removing, attaching or detaching an object in the planning scene. We then wait
-        ## until the updates have been made or ``timeout`` seconds have passed
-        start = rospy.get_time()
-        seconds = rospy.get_time()
-        while (seconds - start < timeout) and not rospy.is_shutdown():
-            # Test if the box is in attached objects
-            attached_objects = scene.get_attached_objects([box_name])
-            is_attached = len(attached_objects.keys()) > 0
+            rospy.logwarn("1. Playing home_to_pkg31 Trajectory File")
+            self.moveit_hard_play_planned_path_from_file(self._file_path, 'home_to_pkg31.yaml',3)
 
-            # Test if the box is in the scene.
-            # Note that attaching the box will remove it from known_objects
-            is_known = box_name in scene.get_known_object_names()
+            result = self.gripper_service_call(True)
+            rospy.logwarn("1. Playing cp31_place Trajectory File")
+            self.moveit_hard_play_planned_path_from_file(self._file_path, 'cp31_place.yaml',3)
 
-            # Test if we are in the expected state
-            if (box_is_attached == is_attached) and (box_is_known == is_known):
-                return True
+            rospy.logwarn("1. Playing pkg31_to_place Trajectory File")
+            self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg31_to_place.yaml',3)
+            result = self.gripper_service_call(False)
 
-            # Sleep so that we give other threads time on the processor
-            rospy.sleep(0.1)
-            seconds = rospy.get_time()
+        elif(pkg_to_pick=="packagen01"):
 
-        # If we exited the while loop without returning then we timed out
-        return False
-        ## END_SUB_TUTORIAL
+            rospy.logwarn("1. Playing place_to_pkg01 Trajectory File")
+            self.moveit_hard_play_planned_path_from_file(self._file_path, 'place_to_pkg01.yaml',3)
 
-    
+            result = self.gripper_service_call(True)
+            rospy.logwarn("1. Playing pkg01_to_place Trajectory File")
+            self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg01_to_place.yaml',3)
+            result = self.gripper_service_call(False)
+        
+        else:
+            
+            m = pkg_to_pick[8]
+            n = pkg_to_pick[9]
+
+            rospy.logwarn("1. Playing place_to_pkg"+m+n+" Trajectory File")
+            self.moveit_hard_play_planned_path_from_file(self._file_path, 'place_to_pkg'+m+n+'.yaml',3)
+
+            result = self.gripper_service_call(True)
+            rospy.logwarn("1. Playing cp"+m+n+"_place Trajectory File")
+            self.moveit_hard_play_planned_path_from_file(self._file_path, 'cp'+m+n+'_place.yaml',3)
+
+            rospy.logwarn("1. Playing pkg"+m+n+"_to_place Trajectory File")
+            self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg'+m+n+'_to_place.yaml',3)
+            result = self.gripper_service_call(False)
+
     # Destructor
 
     def __del__(self):
         moveit_commander.roscpp_shutdown()
         rospy.loginfo(
             '\033[94m' + "Object of class Ur5Moveit Deleted." + '\033[0m')
+   
 
 
 def main():
 
-    ur5 = Ur5Moveit()
+    ur5_1 = Ur5Moveit()
+    
+    num_pkg_to_pick=9
+    pkgs_picked_and_placed = 0
+    pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen30', 'packagen32', 'packagen01']
+    
+    while(pkgs_picked_and_placed < num_pkg_to_pick and not rospy.is_shutdown()):
+
+        ur5_1.pick_place(pkg_to_pick[pkgs_picked_and_placed])
+        pkgs_picked_and_placed = pkgs_picked_and_placed + 1
 
 
+    del ur5_1
+
+    
+    """
     ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
 
 
-    """rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'home_to_pkg21.yaml')"""
+    rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'home_to_pkg21.yaml')
     ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
 
     rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
@@ -156,28 +165,27 @@ def main():
     rospy.logwarn("1. Playing cp21_pick Trajectory File")
     ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_pick.yaml')
 
-    joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
-    ur5._group.go(joint_angles,wait=True)
-
-    rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
-    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'place_to_pkg32.yaml',5)
-
-
     result = ur5.gripper_service_call(True)
+    touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
+    ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
+    print(ur5.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=4))
 
-    rospy.logwarn("1. Playing cp10_place Trajectory File")
-    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'cp32_place.yaml',5)
+    rospy.logwarn("1. Playing cp21_place Trajectory File")
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_place.yaml')
 
-    rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
-    ur5.moveit_hard_play_planned_path_from_file(ur5._file_path, 'pkg32_to_place.yaml',5)
+    rospy.logwarn("1. Playing pkg21_to_place Trajectory File")
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'pkg21_to_place.yaml')
 
     result = ur5.gripper_service_call(False)
+    ur5._scene.remove_attached_object(ur5._eef_link, name=ur5._box_name)
+    print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
 
-    del ur5
+
+    # Removing the box from planning scene 	
+    ur5._scene.remove_world_object(ur5._box_name)"""
 
 
 
 if __name__ == '__main__':
     main()
-
 
