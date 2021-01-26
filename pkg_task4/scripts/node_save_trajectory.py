@@ -23,7 +23,7 @@ class Ur5Moveit:
 
         rospy.init_node('node_moveit_eg6', anonymous=True)
 
-        self._robot_ns = '/ur5_1'
+        self._robot_ns = '/ur5_2'
         self._planning_group = "manipulator"
         
         self._commander = moveit_commander.roscpp_initialize(sys.argv)
@@ -40,12 +40,12 @@ class Ur5Moveit:
 
         #self._group.set_planning_time(99)
 
-        self._group.set_goal_position_tolerance(0.001)
+        #self._group.set_goal_position_tolerance(0.001)
 
-        rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
-        self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
+        #rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
+        #self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
 
-        self._box_name = 'packagen32'
+        """self._box_name = 'packagen32'
         self._box_pose = geometry_msgs.msg.PoseStamped()
         
         self._box_pose.header.frame_id = "world"	
@@ -53,7 +53,7 @@ class Ur5Moveit:
         self._box_pose.pose.position.y = 6.589954 - 7
         self._box_pose.pose.position.z = 1.197499
         self._box_pose.pose.orientation.w = 1.0
-
+        """
         # Attribute to store computed trajectory by the planner	
         self._computed_plan = ''
 
@@ -246,7 +246,7 @@ class Ur5Moveit:
 def main():
 
     ur5 = Ur5Moveit()
-
+    """
     ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
     joint_value_0 = [-2.6011339293255, -2.3590931034680374, 1.8892899715041231, 0.32159706536877586, 0.47790973258301417, 0.036733309660952784]
     ur5._group.go(joint_value_0,wait=True)
@@ -260,28 +260,78 @@ def main():
     #print(ur5._group.get_pose_reference_frame())
     #ur5.go_to_predefined_pose('straightUp')
     x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.197499])
-    #ur5.ee_cartesian_translation(x,y,z)
+    #ur5.ee_cartesian_translation(x,y,z)"""
     pose_values = ur5._group.get_current_pose().pose
     wpose = geometry_msgs.msg.Pose()
-    wpose.position.x = pose_values.position.x + x
-    wpose.position.y = pose_values.position.y + y
-    wpose.position.z = pose_values.position.z + z
-    wpose.orientation.x = -0.9999997
-    wpose.orientation.y = 0
-    wpose.orientation.z = 0
-    wpose.orientation.w = 0.0007963
+    wpose.position.x =-0.842357319327 
+    wpose.position.y =0.128353094355
+    wpose.position.z =1.18518995714
+    wpose.orientation.x = -0.5
+    wpose.orientation.y = -0.5
+    wpose.orientation.z = 0.5
+    wpose.orientation.w = 0.5
     ur5.go_to_pose(wpose)
     rospy.sleep(0.5)
-    file_name = 'place_to_pkg32.yaml'
+    file_name = 'ur5_2_initial_pose.yaml'
     file_path = ur5._file_path + file_name
     
     with open(file_path, 'w') as file_save:
         yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
     
     rospy.loginfo( "File saved at: {}".format(file_path) )
-    
-    
+    """
+    pose_values = ur5._group.get_current_pose().pose
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x =0.7500
+    wpose.position.y =0.0299
+    wpose.position.z =1.400134
+    wpose.orientation.x = -0.5
+    wpose.orientation.y = -0.5
+    wpose.orientation.z = 0.5
+    wpose.orientation.w = 0.5
+    ur5.go_to_pose(wpose)
+    rospy.sleep(0.5)
+    file_name = 'yellow_box_place.yaml'
+    file_path = ur5._file_path + file_name
 
+    with open(file_path, 'w') as file_save:
+        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
+
+    rospy.loginfo( "File saved at: {}".format(file_path) )
+    
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x =-0.842357319327
+    wpose.position.y =0.128353094355
+    wpose.position.z =1.18518995714
+    wpose.orientation.x = -0.5
+    wpose.orientation.y = -0.5
+    wpose.orientation.z = 0.5
+    wpose.orientation.w = 0.5
+    ur5.go_to_pose(wpose)
+    """
+
+
+    pose_values = ur5._group.get_current_pose().pose
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x =0.8172
+    wpose.position.y =0.10915
+    wpose.position.z =0.9445
+    wpose.orientation.x = -0.5
+    wpose.orientation.y = -0.5
+    wpose.orientation.z = 0.5
+    wpose.orientation.w = 0.5
+    ur5.go_to_pose(wpose)
+    #rospy.sleep(0.5)
+    file_name = 'green_box_place.yaml'
+    file_path = ur5._file_path + file_name
+
+    with open(file_path, 'w') as file_save:
+        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
+
+    rospy.loginfo( "File saved at: {}".format(file_path) )
+
+    
+    """
     result = ur5.gripper_service_call(True)
     touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
     ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
@@ -314,7 +364,7 @@ def main():
     print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
 
     # Removing the box from planning scene 	
-    ur5._scene.remove_world_object(ur5._box_name)
+    ur5._scene.remove_world_object(ur5._box_name)"""
 
     del ur5
 
