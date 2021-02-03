@@ -17,6 +17,10 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from pyzbar.pyzbar import decode
 
+from datetime import date
+from pyiot import iot
+
+
 # Service files are required for implementing Vacuum Gripper and Conveyor Belt. Hence, we can use Ros Service to execute them
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
 from pkg_vb_sim.srv import conveyorBeltPowerMsg, conveyorBeltPowerMsgRequest, conveyorBeltPowerMsgResponse
@@ -257,11 +261,11 @@ class Ur5_Moveit:
         #return self.gripper_service_call(True)
         
     # Function to take ur5 arm to specified joint angles
-    def set_joint_angles(self, arg_list_joint_angles):
+    """def set_joint_angles(self, arg_list_joint_angles):
         self._group.set_joint_value_target(arg_list_joint_angles)
-		flag_plan = self._group.go(wait=True)
+        flag_plan = self._group.go(wait=True)
 
-		return flag_plan
+		return flag_plan"""
 
     # Function to confirm set_joint_angles() is a success
     def hard_set_joint_angles(self, arg_list_joint_angles, arg_max_attempts):
@@ -309,6 +313,18 @@ class Ur5_Moveit:
         moveit_commander.roscpp_shutdown()
         rospy.loginfo(
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
+def update_inventory_sheet():
+    global package_data
+    URL="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
+    item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+    for key,value in package_data.items():
+        package_colour=value.capitalize()
+        package_location=key
+        request=iot.spreadsheet_write(URL,Id="Inventory",Team_Id="VB#1194",Unique_Id="PaThJaPa",SKU=package_colour[0]+package_location[8]+package_location[9]+str("%02d"%date.today().month)+str(date.today().year)[2]+str(date.today().year)[3],Item=item_data[package_colour]["item_type"],Priority=item_data[package_colour]["Priority"],Storage_Number="R"+package_location[8]+" "+"C"+package_location[9],Cost=item_data[package_colour]["Cost"],Quantity="1")
+        if(request=="success"):
+            print("value get updated in inventory")
+        else:
+            print("request is unsuccessful")
 
 def main():
     
@@ -321,9 +337,10 @@ def main():
     
     # Updating the packages dictionary using QR Decoding
     camera2D.get_qr_data(shelf_image)
-
+    update_inventory_sheet()
+    
     # Initiating the conveyor belt and heading ur5 arm towards initial pick position 
-    ur5_2.conveyor_belt_service_call(100)
+    """ur5_2.conveyor_belt_service_call(100)
     #ur5_2.initial_pose()
     #joint_values=[0.1464142248418927, -2.6458200146338315, -0.6398742469103862, -1.4258978429985385, 1.570130610400093, 0.14628912718068943]
     #ur5_2._group.go(joint_values,wait=True)
@@ -357,15 +374,10 @@ def main():
                     print("------pick_pose----")
                     #print(ur5_2._group.get_current_pose())"""
                     #pkg_picked.append(obj.type)
-                    ur5_2.place_pkg(obj.type)
-                    print("---place_box---")
-                    ur5_2._group.get_current_pose()
-                    ur5_2.conveyor_belt_service_call(100)
-            ur5_2.pick_pkg()
-                    #ur5_2.initial_pose()
+                    
     
     # Removing the object of Ur5_Moveit class
-    del ur5_2
+    #del ur5_2
 
 # main() is implemented when we execute this python file
 if __name__ == '__main__':
