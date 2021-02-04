@@ -4,13 +4,9 @@
 	
 	<!-- Launch two move_group nodes for the two UR5 Arms -->
   <include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" /> 
-  
-  <group ns = "ur5_1">
-  <!-- Add Shelf to Moveit! Planning Scene in RViz -->
-    <arg name="scene_file" default="$(find pkg_task4)/config/rviz/ur5_1_with_shelf_boxes.scene"/> 
-    <node name = "moveit_publish_scene_from_text" pkg= "moveit_ros_planning" type = "moveit_publish_scene_from_text" args= "$(arg scene_file)"/>
-    
-    </group>
+
+  <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>
+  <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen"/>
  
 
 </launch>

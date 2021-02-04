@@ -9,6 +9,7 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
+from threading import Thread
 
 # Importing modules required for performing functions related to computer vision and QR decoding
 import cv2
@@ -19,6 +20,7 @@ from pyzbar.pyzbar import decode
 
 from datetime import date
 from pyiot import iot
+from pkg_ros_iot_bridge.msg import msgMqttSub
 
 
 # Service files are required for implementing Vacuum Gripper and Conveyor Belt. Hence, we can use Ros Service to execute them
@@ -43,10 +45,17 @@ package_data = {'packagen00':'',
                 'packagen32':''}
 
 # A list of packages that are sent by ur5_1 arm and needs to be sorted out
-pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21',
-             'packagen30', 'packagen32', 'packagen01']
+pkg_to_pick=[]
 # A list to keep a check on packages sorted
 pkg_picked=[]
+
+
+Team_Id="VB#1194"
+Unique_Id="PaThJaPa"
+#tem_data required for spreadsheet and deciding priority
+
+item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+
 
 # Object of Camera class is used for QR decoding
 class Camera():
@@ -145,6 +154,9 @@ class Ur5_Moveit:
         # Handle for subscibing to ROS topic "/eyrc/vb/logical_camera_2"
         rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,self.cb_capture_model)
         
+        #handle for subscribing to ROS toipc "/ros_iot_bridge/mqtt/sub"
+        rospy.Subscriber('/ros_iot_bridge/mqtt/sub',msgMqttSub,self.cb_incoming_order)
+
         # Creating a handle to use Vacuum Gripper service
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_2',timeout=1)
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_2', vacuumGripper)
@@ -159,11 +171,21 @@ class Ur5_Moveit:
         self._file_path = self._pkg_path + '/config/saved_trajectories/'
         rospy.loginfo( "Package Path: {}".format(self._file_path) )
 
-    # Function: cb_capture_model() is the callback function for the subscriber to ROS topic "/eyrc/vb/logical_camera_2".
-    # It updates the node with models recently scanned by logical camera
+    # Function: cb_capture_model() is the callback function for the subscriber to ROS topic "/ros_iot_bridge/mqtt/sub".
     def cb_capture_model(self, model):
         self.model=model
+    
+    # Function: cb_incoming_order() is the callback function for the subscriber to ROS topic "/ros_iot_bridge/mqtt/sub".
+    # It updates the incoming order spreadsheet and the pick_pkg list
+    def cb_incoming_order(self,order_data):
+        global item_data
+        incoming_order=eval(order_data.message.decode('utf-8')) #a dict containing whole data of incoming order
+        Priority_and_Cost=[ [item_data[key]["Priority"],item_data[key]["Cost"]] for key in item_data.keys() if item_data[key]["item_type"]==incoming_order["item"]]
+        URL_incoming_orders="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
+        iot.spreadsheet_write(URL_incoming_orders,Id="Incoming Orders",Team_Id="VB#1194",Unique_Id="PaThJaPa",Order_Id=incoming_order["order_id"],Order_Date_and_Time=incoming_order["order_time"],Item=incoming_order["item"],Priority=Priority_and_Cost[0][0],Order_Quantity=incoming_order["qty"],City=incoming_order["city"],Longitude=incoming_order["lon"],Latitude=incoming_order["lat"],Cost=Priority_and_Cost[0][1])
 
+
+        
     # Function: go_to_pose() controls the ur5 arm and takes it to the provided position and orientation
     def go_to_pose(self, arg_pose):
 
@@ -308,6 +330,8 @@ class Ur5_Moveit:
         rospy.sleep(0.1)
         self.gripper_service_call(False)
 
+    #call
+
     # Destructor
     def __del__(self):
         moveit_commander.roscpp_shutdown()
@@ -315,12 +339,12 @@ class Ur5_Moveit:
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
 def update_inventory_sheet():
     global package_data
-    URL="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
-    item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+    global item_data
+    URL_inventory="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
     for key,value in package_data.items():
         package_colour=value.capitalize()
         package_location=key
-        request=iot.spreadsheet_write(URL,Id="Inventory",Team_Id="VB#1194",Unique_Id="PaThJaPa",SKU=package_colour[0]+package_location[8]+package_location[9]+str("%02d"%date.today().month)+str(date.today().year)[2]+str(date.today().year)[3],Item=item_data[package_colour]["item_type"],Priority=item_data[package_colour]["Priority"],Storage_Number="R"+package_location[8]+" "+"C"+package_location[9],Cost=item_data[package_colour]["Cost"],Quantity="1")
+        request=iot.spreadsheet_write(URL_inventory,Id="Inventory",Team_Id="VB#1194",Unique_Id="PaThJaPa",SKU=package_colour[0]+package_location[8]+package_location[9]+str("%02d"%date.today().month)+str(date.today().year)[2]+str(date.today().year)[3],Item=item_data[package_colour]["item_type"],Priority=item_data[package_colour]["Priority"],Storage_Number="R"+package_location[8]+" "+"C"+package_location[9],Cost=item_data[package_colour]["Cost"],Quantity="1")
         if(request=="success"):
             print("value get updated in inventory")
         else:
@@ -330,14 +354,18 @@ def main():
     
     # Creating an object of Ur5_moveit class
     ur5_2 = Ur5_Moveit()
-
     # Creating an object of Camera class
     camera2D = Camera()
     shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
     
     # Updating the packages dictionary using QR Decoding
     camera2D.get_qr_data(shelf_image)
-    update_inventory_sheet()
+    print(package_data)
+    #thread for updating inventory_spreadsheet
+    Inventory_sheet_thread=Thread(target=update_inventory_sheet())
+    Inventory_sheet_thread.start()
+    rospy.sleep(1000)
+    
     
     # Initiating the conveyor belt and heading ur5 arm towards initial pick position 
     """ur5_2.conveyor_belt_service_call(100)
@@ -377,7 +405,7 @@ def main():
                     
     
     # Removing the object of Ur5_Moveit class
-    #del ur5_2
+    del ur5_2
 
 # main() is implemented when we execute this python file
 if __name__ == '__main__':
