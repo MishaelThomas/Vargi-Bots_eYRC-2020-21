@@ -18,7 +18,7 @@ from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperRes
 from pkg_vb_sim.msg import LogicalCameraImage
 
 task_status=False
-item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Pgitriority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
 
 class Ur5Moveit:
 
