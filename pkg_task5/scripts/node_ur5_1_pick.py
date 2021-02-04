@@ -6,7 +6,7 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
-
+from threading import Thread
 import yaml
 import os
 import math
@@ -19,6 +19,7 @@ from pkg_vb_sim.msg import LogicalCameraImage
 
 task_status=False
 item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+
 class Ur5Moveit:
 
     # Constructor
@@ -129,6 +130,7 @@ class Ur5Moveit:
     def cb_incoming_order(self,order_data):
         global item_data
         incoming_order=eval(order_data.message.decode('utf-8')) #a dict containing whole data of incoming order
+        all_orders.
         Priority_and_Cost=[ [item_data[key]["Priority"],item_data[key]["Cost"]] for key in item_data.keys() if item_data[key]["item_type"]==incoming_order["item"]]
         URL_incoming_orders="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
         iot.spreadsheet_write(URL_incoming_orders,Id="Incoming Orders",Team_Id="VB#1194",Unique_Id="PaThJaPa",Order_Id=incoming_order["order_id"],Order_Date_and_Time=incoming_order["order_time"],Item=incoming_order["item"],Priority=Priority_and_Cost[0][0],Order_Quantity=incoming_order["qty"],City=incoming_order["city"],Longitude=incoming_order["lon"],Latitude=incoming_order["lat"],Cost=Priority_and_Cost[0][1])
@@ -145,7 +147,6 @@ class Ur5Moveit:
 def main():
 
     ur5_1 = Ur5Moveit()
-    
     num_pkg_to_pick=9
     pkgs_picked_and_placed = 0
     pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen30', 'packagen32', 'packagen01']
