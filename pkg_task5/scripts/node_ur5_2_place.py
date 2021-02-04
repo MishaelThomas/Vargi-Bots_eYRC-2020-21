@@ -155,7 +155,7 @@ class Ur5_Moveit:
         rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,self.cb_capture_model)
         
         #handle for subscribing to ROS toipc "/ros_iot_bridge/mqtt/sub"
-        rospy.Subscriber('/ros_iot_bridge/mqtt/sub',msgMqttSub,self.cb_incoming_order)
+       
 
         # Creating a handle to use Vacuum Gripper service
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_2',timeout=1)
@@ -177,15 +177,7 @@ class Ur5_Moveit:
     
     # Function: cb_incoming_order() is the callback function for the subscriber to ROS topic "/ros_iot_bridge/mqtt/sub".
     # It updates the incoming order spreadsheet and the pick_pkg list
-    def cb_incoming_order(self,order_data):
-        global item_data
-        incoming_order=eval(order_data.message.decode('utf-8')) #a dict containing whole data of incoming order
-        Priority_and_Cost=[ [item_data[key]["Priority"],item_data[key]["Cost"]] for key in item_data.keys() if item_data[key]["item_type"]==incoming_order["item"]]
-        URL_incoming_orders="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
-        iot.spreadsheet_write(URL_incoming_orders,Id="Incoming Orders",Team_Id="VB#1194",Unique_Id="PaThJaPa",Order_Id=incoming_order["order_id"],Order_Date_and_Time=incoming_order["order_time"],Item=incoming_order["item"],Priority=Priority_and_Cost[0][0],Order_Quantity=incoming_order["qty"],City=incoming_order["city"],Longitude=incoming_order["lon"],Latitude=incoming_order["lat"],Cost=Priority_and_Cost[0][1])
-
-
-        
+            
     # Function: go_to_pose() controls the ur5 arm and takes it to the provided position and orientation
     def go_to_pose(self, arg_pose):
 
