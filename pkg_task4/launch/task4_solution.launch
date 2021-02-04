@@ -4,6 +4,7 @@
 	
 	<!-- Launch two move_group nodes for the two UR5 Arms -->
   <include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" /> 
+<<<<<<< HEAD
   
   <!-- This node is for implementing task4. This node is responsible for picking the packages from the shelf and
   	placing them on the conveyor belt.   -->
@@ -22,6 +23,11 @@
        args="record -O $(find pkg_task4)/bag_files/$(arg rec_name) --chunksize=10 /eyrc/vb/ur5_1/vacuum_gripper/logical_camera/ur5_1" output="screen"/>
  </group>
 
+=======
+
+  <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>
+  <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen"/>
+>>>>>>> origin/saurav
  
 
 </launch>
