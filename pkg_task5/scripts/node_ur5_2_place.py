@@ -54,7 +54,9 @@ Team_Id="VB#1194"
 Unique_Id="PaThJaPa"
 #tem_data required for spreadsheet and deciding priority
 
-item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},
+            "Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},
+            "Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
 
 
 # Object of Camera class is used for QR decoding
@@ -336,7 +338,11 @@ def update_inventory_sheet():
     for key,value in package_data.items():
         package_colour=value.capitalize()
         package_location=key
-        request=iot.spreadsheet_write(URL_inventory,Id="Inventory",Team_Id="VB#1194",Unique_Id="PaThJaPa",SKU=package_colour[0]+package_location[8]+package_location[9]+str("%02d"%date.today().month)+str(date.today().year)[2]+str(date.today().year)[3],Item=item_data[package_colour]["item_type"],Priority=item_data[package_colour]["Priority"],Storage_Number="R"+package_location[8]+" "+"C"+package_location[9],Cost=item_data[package_colour]["Cost"],Quantity="1")
+        request=iot.spreadsheet_write(URL_inventory,Id="Inventory",Team_Id="VB#1194",Unique_Id="PaThJaPa",
+                                        SKU=package_colour[0]+package_location[8]+package_location[9]+str("%02d"%date.today().month)+str(date.today().year)[2]+str(date.today().year)[3],
+                                        Item=item_data[package_colour]["item_type"],Priority=item_data[package_colour]["Priority"],
+                                        Storage_Number="R"+package_location[8]+" "+"C"+package_location[9],
+                                        Cost=item_data[package_colour]["Cost"],Quantity="1")
         if(request=="success"):
             print("value get updated in inventory")
         else:

@@ -6,7 +6,6 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
-from threading import Thread
 import yaml
 import os
 import math
@@ -17,8 +16,13 @@ import copy
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
 from pkg_vb_sim.msg import LogicalCameraImage
 
-task_status=False
-item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+from pkg_task5.msg import dispatchShipFlag
+from pkg_ros_iot_bridge.msg import msgMqttSub           # Message Class for MQTT Subscription Messages
+
+item_info = {"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},
+            "Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},
+            "Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+
 
 class Ur5Moveit:
 
@@ -27,13 +31,15 @@ class Ur5Moveit:
 
         rospy.init_node('node_ur5_1_pick', anonymous=True)
 
-        self._robot_ns = '/ur5_1'
+        rospy.Subscriber('/ros_iot_bridge/mqtt/sub',msgMqttSub,self.cb_incoming_order)
+        '''self._robot_ns = '/ur5_1'
         self._planning_group = "manipulator"
         
-        self._commander = moveit_commander.roscpp_initialize(sys.argv)
+        moveit_commander.roscpp_initialize(sys.argv)
         self._robot = moveit_commander.RobotCommander(robot_description= self._robot_ns + "/robot_description", ns=self._robot_ns)
         self._scene = moveit_commander.PlanningSceneInterface(ns=self._robot_ns)
         self._group = moveit_commander.MoveGroupCommander(self._planning_group, robot_description= self._robot_ns + "/robot_description", ns=self._robot_ns)
+        
         self._display_trajectory_publisher = rospy.Publisher( self._robot_ns + '/move_group/display_planned_path', moveit_msgs.msg.DisplayTrajectory, queue_size=1)
         self._exectute_trajectory_client = actionlib.SimpleActionClient( self._robot_ns + '/execute_trajectory', moveit_msgs.msg.ExecuteTrajectoryAction)
         self._exectute_trajectory_client.wait_for_server()
@@ -42,7 +48,7 @@ class Ur5Moveit:
         self._eef_link = self._group.get_end_effector_link()
         self._group_names = self._robot.get_group_names()
         
-        rospy.Subscriber('/ros_iot_bridge/mqtt/sub',msgMqttSub,self.cb_incoming_order)
+       
 
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
@@ -56,7 +62,7 @@ class Ur5Moveit:
 
 
         rp = rospkg.RosPack()
-        self._pkg_path = rp.get_path('pkg_task4')
+        self._pkg_path = rp.get_path('pkg_task5')
         self._file_path = self._pkg_path + '/config/saved_trajectories/'
         rospy.loginfo( "Package Path: {}".format(self._file_path) )
 
@@ -70,7 +76,6 @@ class Ur5Moveit:
 			loaded_plan = yaml.load(file_open)
 		
 		ret = self._group.execute(loaded_plan)
-		# rospy.logerr(ret)
 		return ret
     
     def moveit_hard_play_planned_path_from_file(self, arg_file_path, arg_file_name, arg_max_attempts):
@@ -81,7 +86,6 @@ class Ur5Moveit:
 			number_attempts += 1
 			flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
 			rospy.logwarn("attempts: {}".format(number_attempts) )
-			# # self.clear_octomap()
 		
 		return True
 
@@ -126,14 +130,24 @@ class Ur5Moveit:
             rospy.logwarn("1. Playing pkg"+m+n+"_to_place Trajectory File")
             self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg'+m+n+'_to_place.yaml',3)
             result = self.gripper_service_call(False)
-    
+    '''
     def cb_incoming_order(self,order_data):
-        global item_data
-        incoming_order=eval(order_data.message.decode('utf-8')) #a dict containing whole data of incoming order
-        all_orders.
-        Priority_and_Cost=[ [item_data[key]["Priority"],item_data[key]["Cost"]] for key in item_data.keys() if item_data[key]["item_type"]==incoming_order["item"]]
+        
+        global item_info
+
+        incoming_order = eval(order_data.incoming_order_message.decode('utf-8')) #a dict containing whole data of incoming order all_orders.
+        
+        Priority_and_Cost=[ [item_info[key]["Priority"],item_info[key]["Cost"]] for key in item_info.keys() 
+                                                                               if item_info[key]["item_type"]==incoming_order["item"]]
+        
         URL_incoming_orders="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
-        iot.spreadsheet_write(URL_incoming_orders,Id="Incoming Orders",Team_Id="VB#1194",Unique_Id="PaThJaPa",Order_Id=incoming_order["order_id"],Order_Date_and_Time=incoming_order["order_time"],Item=incoming_order["item"],Priority=Priority_and_Cost[0][0],Order_Quantity=incoming_order["qty"],City=incoming_order["city"],Longitude=incoming_order["lon"],Latitude=incoming_order["lat"],Cost=Priority_and_Cost[0][1])
+        
+        #iot.spreadsheet_write(URL_incoming_orders,Id="IncomingOrders",Team_Id="VB#1194",Unique_Id="PaThJaPa",
+        #                                               Order_Id=incoming_order["order_id"],
+        #                                               Order_Date_and_Time=incoming_order["order_time"],Item=incoming_order["item"],
+        #                                               Priority=Priority_and_Cost[0][0],Order_Quantity=incoming_order["qty"],
+        #                                               City=incoming_order["city"],Longitude=incoming_order["lon"],
+        #                                               Latitude=incoming_order["lat"],Cost=Priority_and_Cost[0][1])
 
     # Destructor
 
@@ -147,7 +161,10 @@ class Ur5Moveit:
 def main():
 
     ur5_1 = Ur5Moveit()
-    num_pkg_to_pick=9
+    print('done')
+    while not rospy.is_shutdown():
+        pass
+    '''num_pkg_to_pick=9
     pkgs_picked_and_placed = 0
     pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen30', 'packagen32', 'packagen01']
     
@@ -156,7 +173,7 @@ def main():
         ur5_1.pick_place(pkg_to_pick[pkgs_picked_and_placed])
         pkgs_picked_and_placed = pkgs_picked_and_placed + 1
 
-
+'''
     del ur5_1
 
     
