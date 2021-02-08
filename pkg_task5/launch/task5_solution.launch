@@ -1,9 +1,11 @@
 <launch>
 
+	<include file="$(find pkg_vb_sim)/launch/task5_simulation.launch" />
+	
+	<include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />
 
-    <!-- Run the Online Order Placer Node -->
-    <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>
-    <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen"/>
+	<rosparam file="$(find pkg_task5 )/config/config_pkg_color.yaml"/>
+    	<node name= "node_pkg_color_detection" pkg="pkg_task5" type="node_pkg_color_detection.py" output="screen"/>
     
     <rosparam file="$(find pkg_ros_iot_bridge )/config/config_pyiot.yaml"/>
     <node name= "node_ros_iot_bridge" pkg="pkg_ros_iot_bridge" type="node_ros_iot_bridge.py" output="screen"/>

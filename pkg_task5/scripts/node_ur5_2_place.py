@@ -11,15 +11,7 @@ import actionlib
 import rospkg
 from threading import Thread
 
-# Importing modules required for performing functions related to computer vision and QR decoding
-import cv2
-from std_msgs.msg import String
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
-from pyzbar.pyzbar import decode
-
-from datetime import date
-from pyiot import iot
+from pkg_ros_iot_bridge.scripts.pyiot import iot
 from pkg_ros_iot_bridge.msg import msgMqttSub
 
 
@@ -30,19 +22,7 @@ from pkg_vb_sim.srv import conveyorBeltPowerMsg, conveyorBeltPowerMsgRequest, co
 # Importing msg file for obtaining the feed of Logical cameras
 from pkg_vb_sim.msg import LogicalCameraImage
 
-# This dictionary is created to store the color of packages as decoded using QR code. It is updated later in main()
-package_data = {'packagen00':'',
-                'packagen01':'',
-                'packagen02':'',
-                'packagen10':'',
-                'packagen11':'',
-                'packagen12':'',
-                'packagen20':'',
-                'packagen21':'',
-                'packagen22':'',
-                'packagen30':'',
-                'packagen31':'',
-                'packagen32':''}
+
 
 # A list of packages that are sent by ur5_1 arm and needs to be sorted out
 pkg_to_pick=[]
@@ -59,62 +39,6 @@ item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},
             "Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
 
 
-# Object of Camera class is used for QR decoding
-class Camera():
-
-    # Constructor
-    def __init__(self):
-        self.bridge = CvBridge()
-
-    # Function to obtain attributes of packages from an image of shelf containing packages
-    def get_qr_data(self,data):
-
-        global package_data
-
-        # Obtaining the image in CV2 format
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError as e:
-            rospy.logerr(e)
-        
-        # Enhancing the contrast for a clear image
-        image=cv_image*1.5999999999999998667732370449812151491641998291015625
-
-        # qr_result object contains the decoded data
-        qr_result = decode(image)
-
-        # Using the decoded value to identify color of packages
-        # Using the for loop, we iterate through each package and update the dicitionary from the attributes of package
-        if ( len( qr_result ) > 0):
-            for i in range(0, len(qr_result)):
-                if qr_result[i].rect.left in range(125,131):
-                    if qr_result[i].rect.top in range(313,317):
-                        package_data["packagen00"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(494,499):
-                        package_data["packagen10"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(640,645):
-                        package_data["packagen20"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(795,800):
-                        package_data["packagen30"] = str(qr_result[i].data)
-                elif qr_result[i].rect.left in range(313,319):
-                    if qr_result[i].rect.top in range(313,317):
-                        package_data["packagen01"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(494,499):
-                        package_data["packagen11"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(640,645):
-                        package_data["packagen21"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(795,800):
-                        package_data["packagen31"] = str(qr_result[i].data)
-
-                elif qr_result[i].rect.left in range(499,506):
-                    if qr_result[i].rect.top in range(313,317):
-                        package_data["packagen02"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(494,499):
-                        package_data["packagen12"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(640,645):
-                        package_data["packagen22"] = str(qr_result[i].data)
-                    elif qr_result[i].rect.top in range(795,800):
-                        package_data["packagen32"] = str(qr_result[i].data)
 
 
 # Ur5_moveit class for sorting the packages
@@ -126,7 +50,7 @@ class Ur5_Moveit:
         # Initializing the ROS node.
         rospy.init_node('node_ur5_2_place', anonymous=True)
         
-        # Defining attributes required for MoveIt!
+        '''# Defining attributes required for MoveIt!
         self._robot_ns="/ur5_2"
         self._planning_group = "manipulator"
         self._commander = moveit_commander.roscpp_initialize(sys.argv)
@@ -322,7 +246,7 @@ class Ur5_Moveit:
         self.hard_set_joint_angles(joint_values,3)
 
         rospy.sleep(0.1)
-        self.gripper_service_call(False)
+        self.gripper_service_call(False)'''
 
     #call
 
@@ -331,38 +255,12 @@ class Ur5_Moveit:
         moveit_commander.roscpp_shutdown()
         rospy.loginfo(
             '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
-def update_inventory_sheet():
-    global package_data
-    global item_data
-    URL_inventory="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
-    for key,value in package_data.items():
-        package_colour=value.capitalize()
-        package_location=key
-        request=iot.spreadsheet_write(URL_inventory,Id="Inventory",Team_Id="VB#1194",Unique_Id="PaThJaPa",
-                                        SKU=package_colour[0]+package_location[8]+package_location[9]+str("%02d"%date.today().month)+str(date.today().year)[2]+str(date.today().year)[3],
-                                        Item=item_data[package_colour]["item_type"],Priority=item_data[package_colour]["Priority"],
-                                        Storage_Number="R"+package_location[8]+" "+"C"+package_location[9],
-                                        Cost=item_data[package_colour]["Cost"],Quantity="1")
-        if(request=="success"):
-            print("value get updated in inventory")
-        else:
-            print("request is unsuccessful")
+
 
 def main():
     
     # Creating an object of Ur5_moveit class
     ur5_2 = Ur5_Moveit()
-    # Creating an object of Camera class
-    camera2D = Camera()
-    shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
-    
-    # Updating the packages dictionary using QR Decoding
-    camera2D.get_qr_data(shelf_image)
-    print(package_data)
-    #thread for updating inventory_spreadsheet
-    Inventory_sheet_thread=Thread(target=update_inventory_sheet())
-    Inventory_sheet_thread.start()
-    rospy.sleep(1000)
     
     
     # Initiating the conveyor belt and heading ur5 arm towards initial pick position 

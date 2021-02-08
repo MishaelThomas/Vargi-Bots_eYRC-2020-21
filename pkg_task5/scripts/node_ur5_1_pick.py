@@ -5,6 +5,8 @@ import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
+
+from threading import Thread 
 import rospkg
 import yaml
 import os
@@ -12,16 +14,77 @@ import math
 import time
 import sys
 import copy
+from datetime import date
+
+# Importing modules required for performing functions related to computer vision and QR decoding
+import cv2
+from std_msgs.msg import String
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+from pyzbar.pyzbar import decode
 
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
 from pkg_vb_sim.msg import LogicalCameraImage
 
-from pkg_task5.msg import dispatchShipFlag
 from pkg_ros_iot_bridge.msg import msgMqttSub           # Message Class for MQTT Subscription Messages
 
-item_info = {"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},
-            "Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},
-            "Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+
+# Object of Camera class is used for QR decoding
+class Camera():
+
+    # Constructor
+    def __init__(self):
+        self.bridge = CvBridge()
+
+    # Function to obtain attributes of packages from an image of shelf containing packages
+    def get_qr_data(self,data):
+
+        global package_data
+
+        # Obtaining the image in CV2 format
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+        except CvBridgeError as e:
+            rospy.logerr(e)
+        
+        # Enhancing the contrast for a clear image
+        image=cv_image*1.5999999999999998667732370449812151491641998291015625
+
+        # qr_result object contains the decoded data
+        qr_result = decode(image)
+
+        # Using the decoded value to identify color of packages
+        # Using the for loop, we iterate through each package and update the dicitionary from the attributes of package
+        if ( len( qr_result ) > 0):
+            for i in range(0, len(qr_result)):
+                if qr_result[i].rect.left in range(125,131):
+                    if qr_result[i].rect.top in range(313,317):
+                        package_data["packagen00"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(494,499):
+                        package_data["packagen10"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(640,645):
+                        package_data["packagen20"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(795,800):
+                        package_data["packagen30"] = str(qr_result[i].data)
+                elif qr_result[i].rect.left in range(313,319):
+                    if qr_result[i].rect.top in range(313,317):
+                        package_data["packagen01"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(494,499):
+                        package_data["packagen11"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(640,645):
+                        package_data["packagen21"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(795,800):
+                        package_data["packagen31"] = str(qr_result[i].data)
+
+                elif qr_result[i].rect.left in range(499,506):
+                    if qr_result[i].rect.top in range(313,317):
+                        package_data["packagen02"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(494,499):
+                        package_data["packagen12"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(640,645):
+                        package_data["packagen22"] = str(qr_result[i].data)
+                    elif qr_result[i].rect.top in range(795,800):
+                        package_data["packagen32"] = str(qr_result[i].data)
 
 
 class Ur5Moveit:
@@ -31,8 +94,7 @@ class Ur5Moveit:
 
         rospy.init_node('node_ur5_1_pick', anonymous=True)
 
-        rospy.Subscriber('/ros_iot_bridge/mqtt/sub',msgMqttSub,self.cb_incoming_order)
-        '''self._robot_ns = '/ur5_1'
+        self._robot_ns = '/ur5_1'
         self._planning_group = "manipulator"
         
         moveit_commander.roscpp_initialize(sys.argv)
@@ -47,8 +109,8 @@ class Ur5Moveit:
         self._planning_frame = self._group.get_planning_frame()
         self._eef_link = self._group.get_end_effector_link()
         self._group_names = self._robot.get_group_names()
-        
-       
+    
+        rospy.Subscriber('/ros_iot_bridge/mqtt/sub',msgMqttSub,self.cb_incoming_order)
 
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
@@ -130,25 +192,8 @@ class Ur5Moveit:
             rospy.logwarn("1. Playing pkg"+m+n+"_to_place Trajectory File")
             self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg'+m+n+'_to_place.yaml',3)
             result = self.gripper_service_call(False)
-    '''
-    def cb_incoming_order(self,order_data):
-        
-        global item_info
-
-        incoming_order = eval(order_data.incoming_order_message.decode('utf-8')) #a dict containing whole data of incoming order all_orders.
-        
-        Priority_and_Cost=[ [item_info[key]["Priority"],item_info[key]["Cost"]] for key in item_info.keys() 
-                                                                               if item_info[key]["item_type"]==incoming_order["item"]]
-        
-        URL_incoming_orders="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
-        
-        #iot.spreadsheet_write(URL_incoming_orders,Id="IncomingOrders",Team_Id="VB#1194",Unique_Id="PaThJaPa",
-        #                                               Order_Id=incoming_order["order_id"],
-        #                                               Order_Date_and_Time=incoming_order["order_time"],Item=incoming_order["item"],
-        #                                               Priority=Priority_and_Cost[0][0],Order_Quantity=incoming_order["qty"],
-        #                                               City=incoming_order["city"],Longitude=incoming_order["lon"],
-        #                                               Latitude=incoming_order["lat"],Cost=Priority_and_Cost[0][1])
-
+    
+    
     # Destructor
 
     def __del__(self):
@@ -156,14 +201,81 @@ class Ur5Moveit:
         rospy.loginfo(
             '\033[94m' + "Object of class Ur5Moveit Deleted." + '\033[0m')
    
+def update_inventory_sheet():
+    
+    global package_data
+    global item_info
 
+    URL_inventory = "https://script.google.com/macros/s/AKfycbxB63R6GHpzV8YqhqyVeU_mPOxpCR7ucoZ4DWKKbJgFt5uM4kDhbFio/exec"
+    
+    for key,value in package_data.items():
+
+        package_colour = value.capitalize()
+        package_location = key
+        
+        request=iot.spreadsheet_write(  URL_inventory,Id = "Inventory",
+                                        Team_Id = "VB#1194",
+                                        Unique_Id = "PaThJaPa",
+                                        SKU = package_colour[0]+package_location[8]+package_location[9]+str("%02d"%date.today().month)+str(date.today().year)[2]+str(date.today().year)[3],
+                                        Item = item_info[package_colour]["item_type"],
+                                        Priority = item_info[package_colour]["Priority"],
+                                        Storage_Number = "R"+package_location[8]+" "+"C"+package_location[9],
+                                        Cost = item_info[package_colour]["Cost"],
+                                        Quantity = "1"
+                                    )
+
+        if(request=="success"):
+            print("value is updated in inventory")
+        else:
+            print("request is unsuccessful")
+
+def cb_incoming_order(order_data):
+        
+        global item_info
+
+        incoming_order = eval(order_data.incoming_order_message.decode('utf-8')) 
+        #a dictionary containing whole data of incoming order
+        
+        Priority_and_Cost = [ [item_info[key]["Priority"],item_info[key]["Cost"]] for key in item_info.keys() 
+                                                                               if item_info[key]["item_type"]==incoming_order["item"]]
+        
+        URL_incoming_orders = "https://script.google.com/macros/s/AKfycbxB63R6GHpzV8YqhqyVeU_mPOxpCR7ucoZ4DWKKbJgFt5uM4kDhbFio/exec"
+    
+        request = iot.spreadsheet_write(URL_incoming_orders,Id = "IncomingOrders",
+                                        Team_Id = "VB#1194",
+                                        Unique_Id = "PaThJaPa",
+                                        Order_Id = incoming_order["order_id"],
+                                        Order_Date_and_Time = incoming_order["order_time"],
+                                        Item = incoming_order["item"],
+                                        Priority = Priority_and_Cost[0][0],
+                                        Order_Quantity = incoming_order["qty"],
+                                        City = incoming_order["city"],
+                                        Longitude = incoming_order["lon"],
+                                        Latitude = incoming_order["lat"],
+                                        Cost = Priority_and_Cost[0][1]
+                                        )
+
+        if(request=="success"):
+            print("value get updated in incoming")
+        else:
+            print("request is unsuccessful for incoming")
 
 def main():
 
     ur5_1 = Ur5Moveit()
-    print('done')
-    while not rospy.is_shutdown():
-        pass
+
+    # Creating an object of Camera class
+    camera2D = Camera()
+    shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
+    
+    # Updating the packages dictionary using QR Decoding
+    camera2D.get_qr_data(shelf_image)
+    #print(package_data)
+
+    #thread for updating inventory_spreadsheet
+    Inventory_sheet_thread = Thread(target = update_inventory_sheet())
+    Inventory_sheet_thread.start()
+    
     '''num_pkg_to_pick=9
     pkgs_picked_and_placed = 0
     pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen30', 'packagen32', 'packagen01']
