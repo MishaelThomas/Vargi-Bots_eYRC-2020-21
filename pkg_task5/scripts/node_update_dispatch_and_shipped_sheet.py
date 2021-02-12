@@ -12,7 +12,6 @@ def cb_incoming_order(order_data):
 def cb_update_sheet(data):
     global all_orders
     item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Priority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
-    Delivery_time={"HP":"1","MP":"3","LP":"5"}
     URL_order_dispatched=""
     URL_order_shipped=""
     order=[k for k in all_orders if k["order_id"]==data.Order_Id]

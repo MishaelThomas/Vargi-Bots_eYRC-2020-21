@@ -32,7 +32,8 @@ def mqtt_subscribe_thread_start(arg_callback_func, arg_broker_url, arg_broker_po
         mqtt_client.subscribe(arg_mqtt_topic, arg_mqtt_qos)
         time.sleep(1) # wait
         # mqtt_client.loop_forever() # starts a blocking infinite loop
-        mqtt_client.loop_start()    # starts a new thread
+        mqtt_client.loop_start()
+        # starts a new thread
         return 0
     except:
         return -1

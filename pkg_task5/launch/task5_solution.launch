@@ -13,6 +13,7 @@
     <node name= "node_service_server_conveyor_belt" pkg= "pkg_vb_sim" type="node_service_server_conveyor_belt.py" output="screen"/>
     <rosparam file="$(find pkg_ros_iot_bridge )/config/config_pyiot.yaml"/>
     <node name= "node_iot_ros_bridge_action_server" pkg="pkg_ros_iot_bridge" type="node_action_server_ros_iot_bridge.py" output="screen"/>
+    <node name= ""
     <!-- Run the Online Order Placer Node -->
     <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>
     <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen"/>

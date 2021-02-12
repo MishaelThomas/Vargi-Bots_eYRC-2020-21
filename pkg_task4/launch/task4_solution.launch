@@ -8,5 +8,4 @@
   <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>
   <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen"/>
  
-
 </launch>
