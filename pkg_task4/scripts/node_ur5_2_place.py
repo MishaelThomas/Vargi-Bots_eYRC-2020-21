@@ -257,11 +257,11 @@ class Ur5_Moveit:
         #return self.gripper_service_call(True)
         
     # Function to take ur5 arm to specified joint angles
-    def set_joint_angles(self, arg_list_joint_angles):
+    """def set_joint_angles(self, arg_list_joint_angles):
         self._group.set_joint_value_target(arg_list_joint_angles)
 		flag_plan = self._group.go(wait=True)
 
-		return flag_plan
+		return flag_plan"""
 
     # Function to confirm set_joint_angles() is a success
     def hard_set_joint_angles(self, arg_list_joint_angles, arg_max_attempts):

@@ -21,7 +21,8 @@ from pyzbar.pyzbar import decode
 from datetime import date
 from pyiot import iot
 from pkg_ros_iot_bridge.msg import msgMqttSub
-
+from pkg_task5.msg import dispatch_ship_msg
+from pkg_task5.msg import msgur51_to_ur52
 
 # Service files are required for implementing Vacuum Gripper and Conveyor Belt. Hence, we can use Ros Service to execute them
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
@@ -154,8 +155,10 @@ class Ur5_Moveit:
         # Handle for subscibing to ROS topic "/eyrc/vb/logical_camera_2"
         rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,self.cb_capture_model)
         
-        #handle for subscribing to ROS toipc "/ros_iot_bridge/mqtt/sub"
-       
+        #TEST CODE
+        self.ship_pub=rospy.Publisher("/dispatching_shipping_info",dispatch_ship_msg,queue_size=10)
+        rospy.Subscriber("/ur51_to_ur52",msgur51_to_ur52,self.to_pick)
+        ###########################################################
 
         # Creating a handle to use Vacuum Gripper service
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_2',timeout=1)
@@ -322,8 +325,11 @@ class Ur5_Moveit:
         rospy.sleep(0.1)
         self.gripper_service_call(False)
 
-    #call
-
+    #TESTCODE########################################################
+    def to_pick(self,pick_pkg):
+        rospy.sleep(10)
+        self.ship_pub.publish(Order_Id=pick_pkg.Order_Id,Date_and_Time="1",task_done="Shipped")
+    #####################################################################
     # Destructor
     def __del__(self):
         moveit_commander.roscpp_shutdown()
@@ -347,16 +353,17 @@ def main():
     # Creating an object of Ur5_moveit class
     ur5_2 = Ur5_Moveit()
     # Creating an object of Camera class
-    camera2D = Camera()
+    """camera2D = Camera()
     shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
     
     # Updating the packages dictionary using QR Decoding
     camera2D.get_qr_data(shelf_image)
-    print(package_data)
+    print(package_data)"""
+    rospy.spin()
     #thread for updating inventory_spreadsheet
-    Inventory_sheet_thread=Thread(target=update_inventory_sheet())
-    Inventory_sheet_thread.start()
-    rospy.sleep(1000)
+    #update_inventory_sheet()
+
+    
     
     
     # Initiating the conveyor belt and heading ur5 arm towards initial pick position 

@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
     FILES
     dispatch_ship_msg.msg
+    msgur51_to_ur52.msg
 #   Message2.msg
 )
 

@@ -57,7 +57,10 @@ def mqtt_publish(arg_broker_url, arg_broker_port, arg_mqtt_topic, arg_mqtt_messa
         
 #----------------------------------http reuest------------------------------------------
 # defining our sheet name in the 'id' variable and the the column where we want to update the value
-def spreadsheet_write(URl,**kwargs):
-	URL=URl
-	response = requests.get(URL, params=kwargs)
-	return response.content
+def spreadsheet_write(URL,**kwargs):
+    payload=kwargs["payload"]
+    response = requests.get(URL, params=payload)
+    if(response.content=="success"):
+        print("spreadsheet with id"+" "+payload["Id"]+" "+"updated")
+    else:
+        print("request to update sheet ID"+" "+payload["Id"]+"is unsuccessful")

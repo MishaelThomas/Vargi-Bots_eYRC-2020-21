@@ -1,4 +1,3 @@
 string Order_Id
-bool Dispatched
-bool Shipped
-string date_and_time
+string Date_and_Time
+string task_done

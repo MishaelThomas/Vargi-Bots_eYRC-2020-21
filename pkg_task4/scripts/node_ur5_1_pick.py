@@ -6,6 +6,8 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
+import time
+import datetime
 
 import yaml
 import os
@@ -16,6 +18,9 @@ import copy
 
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
 from pkg_vb_sim.msg import LogicalCameraImage
+from pkg_ros_iot_bridge.msg import msgOrder   
+from pkg_task5.msg import dispatch_ship_msg
+from pkg_task5.msg import msgur51_to_ur52
 
 task_status=False
 
@@ -40,7 +45,12 @@ class Ur5Moveit:
         self._planning_frame = self._group.get_planning_frame()
         self._eef_link = self._group.get_end_effector_link()
         self._group_names = self._robot.get_group_names()
-        
+
+        #TESTING CODE
+        rospy.Subscriber("/order_to_ur5_1",msgOrder,self.order_callback)        
+        self.dispatch_pub=rospy.Publisher("/dispatching_shipping_info",dispatch_ship_msg,queue_size=10)
+        self.to_ur52_pub=rospy.Publisher("/ur51_to_ur52",msgur51_to_ur52,queue_size=10)
+        #########################################
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
         
@@ -50,6 +60,7 @@ class Ur5Moveit:
             '\033[94m' + "End Effector Link: {}".format(self._eef_link) + '\033[0m')
         rospy.loginfo(
             '\033[94m' + "Group Names: {}".format(self._group_names) + '\033[0m')
+
 
 
         rp = rospkg.RosPack()
@@ -124,6 +135,21 @@ class Ur5Moveit:
             self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg'+m+n+'_to_place.yaml',3)
             result = self.gripper_service_call(False)
 
+    #Testing Code##################################################
+    def get_time_str(self):
+        timestamp = int(time.time())
+        value = datetime.datetime.fromtimestamp(timestamp)
+        str_time = value.strftime('%d/%m/%Y %H:%M:%S')
+
+        return str_time
+
+    def order_callback(self,order):
+        #self.pick_place("packagen31")
+        rospy.sleep(10)
+        self.dispatch_pub.publish(Order_Id=order.Order_Id,Date_and_Time=self.get_time_str(),task_done="Dispatched")
+        self.to_ur52_pub.publish(Order_Id=order.Order_Id,Pkg_color="Red")
+    ##################################################
+
     # Destructor
 
     def __del__(self):
@@ -136,7 +162,7 @@ class Ur5Moveit:
 def main():
 
     ur5_1 = Ur5Moveit()
-    
+    """
     num_pkg_to_pick=9
     pkgs_picked_and_placed = 0
     pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen30', 'packagen32', 'packagen01']
@@ -144,8 +170,8 @@ def main():
     while(pkgs_picked_and_placed < num_pkg_to_pick and not rospy.is_shutdown()):
 
         ur5_1.pick_place(pkg_to_pick[pkgs_picked_and_placed])
-        pkgs_picked_and_placed = pkgs_picked_and_placed + 1
-
+        pkgs_picked_and_placed = pkgs_picked_and_placed + 1"""
+    rospy.spin()
 
     del ur5_1
 
