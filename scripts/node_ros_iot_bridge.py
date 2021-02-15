@@ -6,8 +6,8 @@ import rospy
 import actionlib
 import threading
 
-from pkg_ros_iot_bridge.msg import msgMqttSub
-from pkg_ros_iot_bridge.msg import msgOrder     # Message Class for MQTT Subscription Messages
+from pkg_ros_iot_bridge.msg import msgMqttSub         # Message Class for MQTT Subscription Messages
+from pkg_ros_iot_bridge.msg import msgOrder           # Message Class for ur5_1 to ship order
 from pyiot import iot                                 # Custom Python Module to perfrom MQTT Tasks
 
 
@@ -26,7 +26,7 @@ class IotRosBridge:
         self._config_mqtt_server_url = param_config_iot['mqtt']['server_url']
         self._config_mqtt_server_port = param_config_iot['mqtt']['server_port']
         self._config_mqtt_sub_topic = param_config_iot['mqtt']['topic_sub']
-        self._config_mqtt_pub_topic = param_config_iot['mqtt']['topic_pub']
+        #self._config_mqtt_pub_topic = param_config_iot['mqtt']['topic_pub']
         self._config_mqtt_qos = param_config_iot['mqtt']['qos']
         self._config_mqtt_sub_cb_ros_topic = param_config_iot['mqtt']['sub_cb_ros_topic']
         print(param_config_iot)
@@ -35,10 +35,10 @@ class IotRosBridge:
         # Initialize ROS Topic Publication
         # Incoming message from MQTT Subscription will be published on a ROS Topic (/ros_iot_bridge/mqtt/sub).
         # spreadsheet_write_node can subscribe to this ROS Topic (/ros_iot_bridge/mqtt/sub) to get messages from MQTT Subscription.
-        self.incoming_order_pub = rospy.Publisher(self._config_mqtt_sub_cb_ros_topic, msgMqttSub)
+        self.incoming_order_pub = rospy.Publisher(self._config_mqtt_sub_cb_ros_topic, msgMqttSub,queue_size=10)
 
         #node_ur51_pick can subscribe to this ROS Topic("/order_to_ur5_1") to get order_Id and item_type of recieved order id
-        self.order_to_ur51_pub=rospy.Publisher("/order_to_ur5_1",msgOrder)
+        self.order_to_ur51_pub=rospy.Publisher("/order_to_ur5_1",msgOrder,queue_size=10)
 
         # Subscribe to MQTT Topic (/eyrc/vb/PaThJaPa/orders) which is defined in 'config_iot_ros.yaml'.
         # self.mqtt_sub_callback() function will be called when there is a message from MQTT Subscription.
@@ -71,8 +71,8 @@ class IotRosBridge:
         msg_mqtt_sub.topic = message.topic
         msg_mqtt_sub.message = payload
         payload_dict=eval(payload)
-        self.incoming_order_pub.publish(msg_mqtt_sub,queue_size=10)
-        self.order_to_ur51_pub.publish(Order_Id=payload_dict["order_id"],Item_type=payload_dict["item"],queue_size=10)
+        self.incoming_order_pub.publish(msg_mqtt_sub)
+        self.order_to_ur51_pub.publish(Order_Id=payload_dict["order_id"],Item_type=payload_dict["item"])
 
 # Main
 def main():
