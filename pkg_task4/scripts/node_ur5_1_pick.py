@@ -14,6 +14,7 @@ import sys
 
 # Service files are required for implementing Vacuum Gripper
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
+from pkg_task4.msg import msgDisOrder
 
 class Ur5_Moveit:
 
@@ -42,6 +43,8 @@ class Ur5_Moveit:
         # Initiating Vacuum Gripper service
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
+
+        self.dispatched_order_pub = rospy.Publisher('dispatched_order',msgDisOrder,queue_size=5)
         
         rospy.loginfo(
             '\033[94m' + "Planning Group: {}".format(self._planning_frame) + '\033[0m')
@@ -54,7 +57,7 @@ class Ur5_Moveit:
         # Settings for file path from where we will be playing the saved trajectories files
         rp = rospkg.RosPack()
         self._pkg_path = rp.get_path('pkg_task4')
-        self._file_path = self._pkg_path + '/config/saved_trajectories/'
+        self._file_path = self._pkg_path + '/config/ur5_1_saved_trajectories/'
         rospy.loginfo( "Package Path: {}".format(self._file_path) )
 
 
@@ -158,6 +161,9 @@ def main():
     # Using for-loop to implement pick and place one at a time
     for pkg in pkg_to_pick:
         ur5_1.pick_place(pkg)
+        msg = msgDisOrder()
+        msg.pkg_name = pkg
+        ur5_1.dispatched_order_pub.publish(msg)
 
     # Going to initial position after completing the required task
     ur5_1.go_to_predefined_pose("allZeros")
