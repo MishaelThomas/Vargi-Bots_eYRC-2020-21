@@ -9,13 +9,15 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
+import yaml
+import threading
 
 # Importing modules required for performing functions related to computer vision and QR decoding
-import cv2
+'''import cv2
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from pyzbar.pyzbar import decode
+from pyzbar.pyzbar import decode'''
 
 # Service files are required for implementing Vacuum Gripper and Conveyor Belt. Hence, we can use Ros Service to execute them
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
@@ -23,29 +25,34 @@ from pkg_vb_sim.srv import conveyorBeltPowerMsg, conveyorBeltPowerMsgRequest, co
 
 # Importing msg file for obtaining the feed of Logical cameras
 from pkg_vb_sim.msg import LogicalCameraImage
+from pkg_task4.msg import msgDisOrder
+
+work_done = False
+flag = True
+pkgs_sorted = 0
 
 # This dictionary is created to store the color of packages as decoded using QR code. It is updated later in main()
-package_data = {'packagen00':'',
-                'packagen01':'',
-                'packagen02':'',
-                'packagen10':'',
-                'packagen11':'',
-                'packagen12':'',
-                'packagen20':'',
-                'packagen21':'',
-                'packagen22':'',
-                'packagen30':'',
-                'packagen31':'',
-                'packagen32':''}
+package_data = {'packagen00':'red',
+                'packagen01':'green',
+                'packagen02':'yellow',
+                'packagen10':'green',
+                'packagen11':'yellow',
+                'packagen12':'red',
+                'packagen20':'yellow',
+                'packagen21':'red',
+                'packagen22':'green',
+                'packagen30':'red',
+                'packagen31':'yellow',
+                'packagen32':'green'}
 
-# A list of packages that are sent by ur5_1 arm and needs to be sorted out
+'''# A list of packages that are sent by ur5_1 arm and needs to be sorted out
 pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21',
              'packagen30', 'packagen32', 'packagen01']
 # A list to keep a check on packages sorted
-pkg_picked=[]
+pkg_picked=[]'''
 
 # Object of Camera class is used for QR decoding
-class Camera():
+'''class Camera():
 
     # Constructor
     def __init__(self):
@@ -99,7 +106,7 @@ class Camera():
                     elif qr_result[i].rect.top in range(640,645):
                         package_data["packagen22"] = str(qr_result[i].data)
                     elif qr_result[i].rect.top in range(795,800):
-                        package_data["packagen32"] = str(qr_result[i].data)
+                        package_data["packagen32"] = str(qr_result[i].data)'''
 
 
 # Ur5_moveit class for sorting the packages
@@ -149,16 +156,136 @@ class Ur5_Moveit:
         rospy.wait_for_service('/eyrc/vb/conveyor/set_power')
         self.conveyor_belt_service_call = rospy.ServiceProxy('/eyrc/vb/conveyor/set_power', conveyorBeltPowerMsg)
 
-        rospy.loginfo('\033[94m' + " >>> Init done." + '\033[0m')
+        rospy.Subscriber('dispatched_order',msgDisOrder,self.cb_exec_sort)
+
+        # Settings for file path from where we will be playing the saved trajectories files
         rp = rospkg.RosPack()
         self._pkg_path = rp.get_path('pkg_task4')
-        self._file_path = self._pkg_path + '/config/saved_trajectories/'
+        self._file_path = self._pkg_path + '/config/ur5_2_saved_trajectories/'
         rospy.loginfo( "Package Path: {}".format(self._file_path) )
+
+        rospy.loginfo('\033[94m' + " >>> Init done." + '\033[0m')
+
+    def cb_exec_sort(self, msg):
+        
+        global work_done, flag, package_data
+        print(msg.pkg_name)
+        item_color = package_data[msg.pkg_name]
+
+        if flag:
+            self.conveyor_belt_service_call(100)
+            while len(self.model) == 1 and self.model[0].type == 'ur5':
+                pass
+            while self.model[1].pose.position.y > 0.00001:
+                pass
+            self.conveyor_belt_service_call(0)
+            flag = False
+            print(self.model[1].pose.position.y)
+        
+        self.pick_pkg(self.model[1].pose)
+        joint_angles = [0.14648733592875196, -2.38179315608067, -0.7257155148810783, -1.6048803093744644, 1.570796326803042, 0.14648733591716212]
+        self.hard_set_joint_angles(joint_angles,3)
+        work_done = False
+        thread1 = threading.Thread (target = self.place_pkg,args = (item_color,))
+        thread2 = threading.Thread (target = self.control_conveyor_belt, args = (self.model[1].type,))
+        thread1.start()
+        thread2.start()
+        thread1.join()
+        thread2.join()
+
+    # This function sorts the attached package on the basis of its color and calls hard_set_joint_angles() to execute the same
+    def place_pkg(self,package_color):
+
+        global work_done, pkgs_sorted
+        
+        if(package_color=="red"):
+            file_1_name = 'initial_pose_to_red_bin.yaml'
+            file_2_name = 'red_bin_to_initial_pose.yaml'
+        
+        elif (package_color=="yellow"):
+            file_1_name = 'initial_pose_to_yellow_bin.yaml'
+            file_2_name = 'yellow_bin_to_initial_pose.yaml'
+        
+        elif(package_color=="green"):
+            file_1_name = 'initial_pose_to_green_bin.yaml'
+            file_2_name = 'green_bin_to_initial_pose.yaml'
+        
+        self.moveit_hard_play_planned_path_from_file(self._file_path, file_1_name ,3)
+        self.gripper_service_call(False)
+        self.moveit_hard_play_planned_path_from_file(self._file_path, file_2_name ,3)
+        work_done = True
+        pkgs_sorted += 1
+
+    def control_conveyor_belt(self, pkg_picked):
+        
+        global work_done
+        print('starting thread 2')
+        self.conveyor_belt_service_call(100)
+        a = self.model
+        while len(a) <= 2:
+            if len(a) == 0:
+                pass
+            elif len(a) == 1:
+                if a[0].type == "ur5" or a[0].type == pkg_picked:
+                    pass 
+                else:
+                    break
+            elif len(a) == 2:
+                if a[1].type == "ur5" or a[1].type == pkg_picked:
+                    pass 
+                else:
+                    break
+            a = self.model
+        print('belt stopped')
+        while self.model[1].pose.position.y > 0.00001:
+            pass 
+        self.conveyor_belt_service_call(0)
+        while not work_done:
+            pass
+
+        ''' while len(self.model.models) == 0 or len(self.model.models)==2:
+            if len(self.model.models)==2:
+                for x in self.model.models:
+                    if(x.type in pkg_picked):
+                        picked_present=True
+                        break
+                    else:
+                        picked_present=False
+                if(picked_present):
+                    continue
+                else:
+                    break    
+        while len(self.model.models)==1 and self.model.models[0].type=="ur5":
+            continue
+        rospy.sleep(0.5)
+        self.conveyor_belt_service_call(0)'''
 
     # Function: cb_capture_model() is the callback function for the subscriber to ROS topic "/eyrc/vb/logical_camera_2".
     # It updates the node with models recently scanned by logical camera
     def cb_capture_model(self, model):
-        self.model=model
+        self.model=model.models
+
+    def moveit_play_planned_path_from_file(self, arg_file_path, arg_file_name):
+		file_path = arg_file_path + arg_file_name
+		
+		with open(file_path, 'r') as file_open:
+			loaded_plan = yaml.load(file_open)
+		
+		ret = self._group.execute(loaded_plan) # Execution of trajectory file
+
+		return ret
+    
+    # Function to confirm the execution of saved trajectories in few attempts
+    def moveit_hard_play_planned_path_from_file(self, arg_file_path, arg_file_name, arg_max_attempts):
+		number_attempts = 0
+		flag_success = False
+
+		while ( (number_attempts <= arg_max_attempts) and (flag_success is False) ):
+			number_attempts += 1
+			flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
+			rospy.logwarn("attempts: {}".format(number_attempts) )
+		
+		return True
 
     # Function: go_to_pose() controls the ur5 arm and takes it to the provided position and orientation
     def go_to_pose(self, arg_pose):
@@ -197,14 +324,14 @@ class Ur5_Moveit:
 
         
     # calculate_cartesian_path function provides the exact position of package using the frame of logical_camera_2 
-    def calculate_cartesian_path (self,package_pose_wrt_camera): 
+    def calculate_package_distance (self,package_pose_wrt_camera): 
         
         # Transforming the package position from logical camera's frame
         pose_package_wrt_world=[-0.8+package_pose_wrt_camera.position.z,
                                 package_pose_wrt_camera.position.y,
                                 2-package_pose_wrt_camera.position.x]
         
-        pose_ee_wrt_world=self._group.get_current_pose().pose
+        pose_ee_wrt_world = self._group.get_current_pose().pose
         
         # Distance to be translated by the ur5 arm is determined below
         cartesian_path=(pose_package_wrt_world[0]-pose_ee_wrt_world.position.x,
@@ -212,53 +339,36 @@ class Ur5_Moveit:
                         pose_package_wrt_world[2]-pose_ee_wrt_world.position.z+self.delta)
         
         return cartesian_path
-      # Function to execute a saved trajectory
-    def moveit_play_planned_path_from_file(self, arg_file_path, arg_file_name):
-                file_path = arg_file_path + arg_file_name
-
-                with open(file_path, 'r') as file_open:
-                        loaded_plan = yaml.load(file_open)
-
-                ret = self._group.execute(loaded_plan) # Execution of trajectory file
-
-                return ret
-
-    # Function to confirm the execution of saved trajectories in few attempts
-    def moveit_hard_play_planned_path_from_file(self, arg_file_path, arg_file_name, arg_max_attempts):
-                number_attempts = 0
-                flag_success = False
-
-                while ( (number_attempts <= arg_max_attempts) and (flag_success is False) ):
-                        number_attempts += 1
-                        flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
-                        rospy.logwarn("attempts: {}".format(number_attempts) )
-
-                return True
 
     # This function calculates the distance to move and attaches the package
-    def pick_pkg(self):
-        #x,y,z = self.calculate_cartesian_path(package_pose)
-        """
-        #pose_values = self._group.get_current_pose().pose
+    def pick_pkg(self,package_pose):
+        
+        x,y,z = self.calculate_package_distance(package_pose)
+        
+        pose_values = self._group.get_current_pose().pose
+        
         wpose = geometry_msgs.msg.Pose()
-        #wpose.position.x =pose_values.position.x+x
-        #wpose.position.y =pose_values.position.y+y
-        #wpose.position.z = pose_values.position.z+z
-        wpose.position.x= -0.842357319327
-        wpose.position.y= 0.128353094355
-        wpose.position.z= 1.18518995714
+        wpose.position.x = pose_values.position.x + x
+        wpose.position.y = pose_values.position.y + y
+        wpose.position.z = pose_values.position.z + z
         wpose.orientation.x = -0.5
         wpose.orientation.y = -0.5
         wpose.orientation.z = 0.5
         wpose.orientation.w = 0.5
-        self.go_to_pose(wpose)"""
-        self.moveit_hard_play_planned_path_from_file(self._file_path," ur5_2_initial_pose.yaml",3)
+        self.go_to_pose(wpose)
+
         # Attaching the package
-        #return self.gripper_service_call(True)
+        self.gripper_service_call(True)
         
     # Function to take ur5 arm to specified joint angles
+<<<<<<< HEAD
     """def set_joint_angles(self, arg_list_joint_angles):
         self._group.set_joint_value_target(arg_list_joint_angles)
+=======
+    def set_joint_angles(self, arg_list_joint_angles):
+
+		self._group.set_joint_value_target(arg_list_joint_angles)
+>>>>>>> origin/main
 		flag_plan = self._group.go(wait=True)
 
 		return flag_plan"""
@@ -272,37 +382,12 @@ class Ur5_Moveit:
 		while ( (number_attempts <= arg_max_attempts) and  (flag_success is False) ):
 			number_attempts += 1
 			flag_success = self.set_joint_angles(arg_list_joint_angles)
-                        rospy.logwarn("attempts: {}".format(number_attempts) )
-                        if(flag_success):
-                            self._group.stop()
+			rospy.logwarn("attempts: {}".format(number_attempts) )
 
     # Function to take ur5 to an intial pose from where picking will be easier
-    def initial_pose(self):
+    '''def initial_pose(self):
         joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
-        self.hard_set_joint_angles(joint_angles,3)
-
-    # This function sorts the attached package on the basis of its color and calls hard_set_joint_angles() to execute the same
-    def place_pkg(self,package_name):
-        global package_data
-        package_color = package_data[package_name]
-        joint_values = []
-        
-        if(package_color=="red"):
-            joint_values=[-1.5722165746417147, -2.0156468764887974, -1.4441489746467298, -1.253079896204322, 1.5716701789574419, -1.5731922855980915]
-        
-        elif (package_color=="yellow"):
-            """joint_values=[-0.10597267010129219, -0.9232539830623159, 0.8675774939714938, -1.5159454519701585, -1.5716655689094967, 3.034847263597408]"""
-            self.moveit_hard_play_planned_path_from_file(self._file_path, 'yellow_box_place.yaml',3)
-            return
-        
-        elif(package_color=="green"):
-            joint_values=[-1.677851795541076, -1.193402632379506, 1.2809171265671475, -1.6590883174733078, -1.5713969000516617, 1.4627511449783928]
-        
-        rospy.sleep(0.1)
-        self.hard_set_joint_angles(joint_values,3)
-
-        rospy.sleep(0.1)
-        self.gripper_service_call(False)
+        self.hard_set_joint_angles(joint_angles,3)'''
 
     # Destructor
     def __del__(self):
@@ -314,8 +399,8 @@ def main():
     
     # Creating an object of Ur5_moveit class
     ur5_2 = Ur5_Moveit()
-
-    # Creating an object of Camera class
+    
+    '''# Creating an object of Camera class
     camera2D = Camera()
     shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
     
@@ -323,46 +408,29 @@ def main():
     camera2D.get_qr_data(shelf_image)
 
     # Initiating the conveyor belt and heading ur5 arm towards initial pick position 
-    ur5_2.conveyor_belt_service_call(100)
-    #ur5_2.initial_pose()
-    #joint_values=[0.1464142248418927, -2.6458200146338315, -0.6398742469103862, -1.4258978429985385, 1.570130610400093, 0.14628912718068943]
-    #ur5_2._group.go(joint_values,wait=True)
-    ur5_2.pick_pkg()
-    print("------init_pose------")
-    print(ur5_2._group.get_current_pose())
+    ur5_2.conveyor_belt_service_call(100)'''
+    ur5_2.moveit_hard_play_planned_path_from_file(ur5_2._file_path, 'start_to_initial_pose.yaml',3)
+
+    while pkgs_sorted < 9:
+        pass
 
     # This loop is used to reach to detected packages, attaching them to ur5 arm using pick_pkg() and sorting 
     # them using place_pkg(). Meanwhile it stops the conveyor belt.
-    while len(pkg_picked) != len(pkg_to_pick):        
+    '''while len(pkg_picked) != len(pkg_to_pick):        
         
-        if len(ur5_2.model.models) > 1:
+        if len(ur5_2.model.models) >= 1:
             
             for obj in ur5_2.model.models:
                 if obj.type != "ur5":
-                    #rospy.sleep(0.5)
-                    while(not ur5_2.gripper_service_call(True).result):
-                        continue
-                    print("----out of loop----")
-                    rospy.sleep(0.0001)
-                    ur5_2.gripper_service_call(True)
+                    rospy.sleep(0.5)
                     ur5_2.conveyor_belt_service_call(0)
-                    #rospy.sleep(0.1)
-                    #ur5_2.pick_pkg(ur5_2.model.models[1].pose)
-                    #print(ur5_2._group.get_current_pose())
-                    #ur5_2.initial_pose()
-                    #ur5_2.conveyor_belt_service_call(100)
-                    #ur5_2.place_pkg(obj.type)
-                    #rospy.sleep(0.1)
-                    #ur5_2.pick_pkg(ur5_2.model.models[1].pose)
-                    print("------pick_pose----")
-                    #print(ur5_2._group.get_current_pose())"""
-                    #pkg_picked.append(obj.type)
-                    ur5_2.place_pkg(obj.type)
-                    print("---place_box---")
-                    ur5_2._group.get_current_pose()
-                    ur5_2.conveyor_belt_service_call(100)
-            ur5_2.pick_pkg()
-                    #ur5_2.initial_pose()
+                    rospy.sleep(0.1)
+                    ur5_2.pick_pkg(ur5_2.model.models[1].pose)
+                    joint_angles=[0.14648733592875196, -2.38179315608067, -0.7257155148810783, -1.6048803093744644, 1.570796326803042, 0.14648733591716212]
+                    ur5_2.hard_set_joint_angles(joint_angles,3)
+                    pkg_picked.append(obj.type)
+                    print(obj.type)
+                    ur5_2.place_pkg(obj.type)'''
     
     # Removing the object of Ur5_Moveit class
     del ur5_2

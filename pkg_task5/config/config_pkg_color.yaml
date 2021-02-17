@@ -1,0 +1,17 @@
+# Config file for colour of the packages
+pkg_clr:
+  packagen00: "red"
+  packagen01: "yellow"
+  packagen02: "green"
+  
+  packagen10: "green"
+  packagen11: "yellow"
+  packagen12: "red"
+
+  packagen20: "green"
+  packagen21: "red"
+  packagen22: "yellow"
+
+  packagen30: "yellow"
+  packagen31: "green"
+  packagen32: "red"

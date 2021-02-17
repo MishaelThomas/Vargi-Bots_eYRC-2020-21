@@ -1,0 +1,221 @@
+#! /usr/bin/env python
+
+
+# Importing required modules, msg files, srv files and so on
+import rospy
+import sys
+import copy
+
+import moveit_commander
+import moveit_msgs.msg
+import geometry_msgs.msg
+import actionlib
+
+# Service files are required for implementing Vacuum Gripper and Conveyor Belt. Hence, we can use Ros Service to execute them
+from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
+from pkg_vb_sim.srv import conveyorBeltPowerMsg, conveyorBeltPowerMsgRequest, conveyorBeltPowerMsgResponse
+
+# Importing msg file for obtaining the feed of Logical camera
+from pkg_vb_sim.msg import LogicalCameraImage
+
+class Ur5_moveit:
+
+    # Constructor
+    def __init__(self):
+
+        # Initializing the ROS node.
+        rospy.init_node('node_task3_solution', anonymous=True)
+        
+        # Defining attributes required for MoveIt!
+        self._planning_group = "ur5_1_planning_group"
+        self._commander = moveit_commander.roscpp_initialize(sys.argv)
+        self._robot = moveit_commander.RobotCommander()
+        self._scene = moveit_commander.PlanningSceneInterface()
+        self._group = moveit_commander.MoveGroupCommander(self._planning_group)
+       
+        # Handle to publish planned path on ROS topic '/move_group/display_planned_path'
+        self._display_trajectory_publisher = rospy.Publisher(
+            '/move_group/display_planned_path', moveit_msgs.msg.DisplayTrajectory, queue_size=1)
+        
+        # Handle to execute planned path using ROS action client
+        self._exectute_trajectory_client = actionlib.SimpleActionClient(
+            'execute_trajectory', moveit_msgs.msg.ExecuteTrajectoryAction)
+        self._exectute_trajectory_client.wait_for_server()
+        
+        self._planning_frame = self._group.get_planning_frame()
+        self._eef_link = self._group.get_end_effector_link()
+        self._group_names = self._robot.get_group_names()
+
+        self.currentpose=self._group.get_current_pose().pose
+       
+        # Initializing the attributes obtained from Logical camera
+        self.model=LogicalCameraImage()
+        
+        # Handle for subscibing to ROS topic "/eyrc/vb/logical_camera_2"
+        rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,self.cb_capture_model)
+
+        # Creating a handle to use Vacuum Gripper service
+        rospy.wait_for_service('/eyrc/vb/ur5_1/activate_vacuum_gripper')
+        self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5_1/activate_vacuum_gripper', vacuumGripper)
+        print('done')
+        # Creating a handle to use Conveyor Belt service with desired power
+        rospy.wait_for_service('/eyrc/vb/conveyor/set_power')
+        self.conveyor_belt_service_call = rospy.ServiceProxy('/eyrc/vb/conveyor/set_power', conveyorBeltPowerMsg)
+
+        rospy.loginfo('\033[94m' + " >>> Init done." + '\033[0m')
+
+    # Function: cb_capture_model() is the callback function for the subscriber to ROS topic "/eyrc/vb/logical_camera_2".
+    # It updates the node with models recently scanned by logical camera
+    def cb_capture_model(self, model):
+        self.model=model
+
+    # Function: go_to_pose() controls the ur5 arm and takes it to the provided position and orientation
+    def go_to_pose(self, arg_pose):
+
+        pose_values = self._group.get_current_pose().pose
+        rospy.loginfo('\033[94m' + ">>> Current Pose:" + '\033[0m')
+        rospy.loginfo(pose_values)
+
+        # Commanding ur5 arm to head towards desired position
+        self._group.set_pose_target(arg_pose)
+        flag_plan = self._group.go(wait=True)  # wait=False for Async Move
+
+        # Displaying final pose and joint values
+        pose_values = self._group.get_current_pose().pose
+        rospy.loginfo('\033[94m' + ">>> Final Pose:" + '\033[0m')
+        rospy.loginfo(pose_values)
+
+        list_joint_values = self._group.get_current_joint_values()
+        rospy.loginfo('\033[94m' + ">>> Final Joint Values:" + '\033[0m')
+        rospy.loginfo(list_joint_values)
+
+        if (flag_plan == True):
+            rospy.loginfo('\033[94m' + ">>> go_to_pose() Success" + '\033[0m')
+        else:
+            rospy.logerr(
+                '\033[94m' + ">>> go_to_pose() Failed. Solution for Pose not Found." + '\033[0m')
+
+        return flag_plan
+
+    def ee_cartesian_translation(self, trans_x, trans_y, trans_z):
+        # 1. Create a empty list to hold waypoints
+        waypoints = []
+
+        # 2. Add Current Pose to the list of waypoints
+        waypoints.append(self._group.get_current_pose().pose)
+
+        # 3. Create a New waypoint
+        wpose = geometry_msgs.msg.Pose()
+        wpose.position.x = waypoints[0].position.x + (trans_x)  
+        wpose.position.y = waypoints[0].position.y + (trans_y)  
+        wpose.position.z = waypoints[0].position.z + (trans_z)
+        # This to keep EE parallel to Ground Plane
+        wpose.orientation.x = -0.5
+        wpose.orientation.y = -0.5
+        wpose.orientation.z = 0.5
+        wpose.orientation.w = 0.5
+
+
+        # 4. Add the new waypoint to the list of waypoints
+        waypoints.append(copy.deepcopy(wpose))
+
+
+        # 5. Compute Cartesian Path connecting the waypoints in the list of waypoints
+        (plan, fraction) = self._group.compute_cartesian_path(
+            waypoints,   # waypoints to follow
+            0.01,        # Step Size, distance between two adjacent computed waypoints will be 1 cm
+            0.0)         # Jump Threshold
+        rospy.loginfo("Path computed successfully. Moving the arm.")
+
+        # The reason for deleting the first two waypoints from the computed Cartisian Path can be found here,
+        # https://answers.ros.org/question/253004/moveit-problem-error-trajectory-message-contains-waypoints-that-are-not-strictly-increasing-in-time/?answer=257488#post-id-257488
+        num_pts = len(plan.joint_trajectory.points)
+        if (num_pts >= 3):
+            del plan.joint_trajectory.points[0]
+            del plan.joint_trajectory.points[1]
+
+        # 6. Make the arm follow the Computed Cartesian Path
+        self._group.execute(plan)
+
+    def calculate_cartesian_path (self,package_pose_wrt_camera):
+        
+        print("------wrt_camera------")
+        print(package_pose_wrt_camera)
+        
+        pose_package_wrt_world=[-0.8+package_pose_wrt_camera.position.z,
+                                package_pose_wrt_camera.position.y,
+                                2-package_pose_wrt_camera.position.x]
+        
+        print("-------wrt_world-----")
+        print(pose_package_wrt_world)
+        
+        pose_ee_wrt_world=self._group.get_current_pose().pose
+        print(pose_ee_wrt_world)
+        
+        cartesian_path=(-(pose_ee_wrt_world.position.x-pose_package_wrt_world[0]),
+                        -(pose_ee_wrt_world.position.y-pose_package_wrt_world[1]),
+                        -(pose_ee_wrt_world.position.z-pose_package_wrt_world[2])+self.delta)
+        
+        x,y,z=cartesian_path
+        print("-----x,y,z")
+        print(x,y,z)
+        print("------cartesian path")
+        print(cartesian_path)
+        
+        return cartesian_path
+
+    def pick_pkg(self,package_pose):
+
+        x,y,z=self.calculate_cartesian_path(package_pose)
+        self.conveyor_belt_service_call(0)
+        self.ee_cartesian_translation(x,y,z)
+        self.gripper_service_call(True)
+        print("attached")
+
+    def init_pose(self):
+        joint_angles=[0.13686832396868986, -2.3780854418447985, -0.8477707268506842, -1.4858327222534857, 1.5697997509806312, 0.13785032539154152]
+        self._group.go(joint_angles,wait=True)
+
+    # Destructor
+    def __del__(self):
+        moveit_commander.roscpp_shutdown()
+        rospy.loginfo(
+            '\033[94m' + "Object of class Ur5_moveit Deleted." + '\033[0m')
+
+    def place_pkg(self,package_name):
+        joint_values=[]
+
+        self.conveyor_belt_service_call(15)
+        if(package_name=="packagen1"):
+            joint_values=[-1.5722165746417147, -2.0156468764887974, -1.4441489746467298, -1.253079896204322, 1.5716701789574419, -1.5731922855980915]
+        if (package_name=="packagen2"):
+            joint_values=[-0.10597267010129219, -0.9232539830623159, 0.8675774939714938, -1.5159454519701585, -1.5716655689094967, 3.034847263597408]
+        if(package_name=="packagen3"):
+            joint_values=[-1.677851795541076, -1.193402632379506, 1.2809171265671475, -1.6590883174733078, -1.5713969000516617, 1.4627511449783928]
+        self._group.go(joint_values,wait=True)
+        rospy.sleep(0.1)
+        self.gripper_service_call(False)
+        self.init_pose()
+
+def main():
+    
+    # Creating an object of Ur5_moveit class
+    ur5 = Ur5_moveit()
+
+    ur5.conveyor_belt_service_call(100)
+    ur5.init_pose()
+    while not rospy.is_shutdown():
+        if(len(ur5.model.models)>=2):
+            for x in ur5.model.models:
+                if x.type != "ur5":
+                    ur5.pick_pkg(x.pose)
+        else:
+            continue
+
+
+    # Removing the object of Ur5_moveit class"""
+    del ur5
+
+if __name__ == '__main__':
+    main()
+    

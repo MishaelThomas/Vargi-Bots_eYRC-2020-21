@@ -40,20 +40,20 @@ class Ur5Moveit:
 
         #self._group.set_planning_time(99)
 
-        self._group.set_goal_position_tolerance(0.001)
+        #self._group.set_goal_position_tolerance(0.001)
 
         rospy.wait_for_service('//eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
 
-        self._box_name = 'packagen10'
+        """self._box_name = 'packagen32'
         self._box_pose = geometry_msgs.msg.PoseStamped()
         
         self._box_pose.header.frame_id = "world"	
-        self._box_pose.pose.position.x = 0
+        self._box_pose.pose.position.x = -0.28
         self._box_pose.pose.position.y = 6.589954 - 7
         self._box_pose.pose.position.z = 1.197499
         self._box_pose.pose.orientation.w = 1.0
-        
+        """
         # Attribute to store computed trajectory by the planner	
         self._computed_plan = ''
 
@@ -81,7 +81,7 @@ class Ur5Moveit:
         pose_ee_wrt_world=self._group.get_current_pose().pose
         
         cartesian_path=(package_pose_wrt_world[0]-pose_ee_wrt_world.position.x, 
-        				package_pose_wrt_world[1]-pose_ee_wrt_world.position.y - 7 + 0.19, 
+        				package_pose_wrt_world[1]-pose_ee_wrt_world.position.y-7+0.19, 
         				package_pose_wrt_world[2]-pose_ee_wrt_world.position.z)
         
         return cartesian_path
@@ -108,13 +108,15 @@ class Ur5Moveit:
 
         # 4. Add the new waypoint to the list of waypoints
         waypoints.append(copy.deepcopy(wpose))
+        fraction = 0
 
-        # 5. Compute Cartesian Path connecting the waypoints in the list of waypoints
-        (plan, fraction) = self._group.compute_cartesian_path(
-            waypoints,   # waypoints to follow
-            0.01,        # Step Size, distance between two adjacent computed waypoints will be 1 cm
-            0.0)         # Jump Threshold
-        rospy.loginfo("Path computed successfully. Moving the arm.")
+        while fraction < 0.8: 
+                # 5. Compute Cartesian Path connecting the waypoints in the list of waypoints
+                (plan, fraction) = self._group.compute_cartesian_path(
+                    waypoints,   # waypoints to follow
+                    0.01,        # Step Size, distance between two adjacent computed waypoints will be 1 cm
+                    0.0)         # Jump Threshold
+                rospy.loginfo("Path computed successfully. Moving the arm.")
 
 
         self._computed_plan = plan
@@ -140,6 +142,7 @@ class Ur5Moveit:
 		self._group.set_joint_value_target(arg_list_joint_angles)
 		self._computed_plan = self._group.plan()
 		flag_plan = self._group.go(wait=True)
+		print(type(self._computed_plan))
 
 		return flag_plan
 
@@ -245,189 +248,15 @@ class Ur5Moveit:
 def main():
 
     ur5 = Ur5Moveit()
-    
-    #Saving trajectories for ur51
-    
-    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15)) # Adding the box after setting it in RViz planning scene from init()
-    
-    '''
-    Package positions
-    packagen00:[0.28,6.59,1.917499]
-    packagen01:[0,6.59,1.917499]
-    packagen02:[-0.28,6.59,1.917499]
-    packagen10:[0.28,6.589954,1.647499]
-    packagen11:[0,6.589954,1.647499]
-    packagen12:[-0.28,6.589954,1.647499]
-    packagen20:[0.28,6.589954,1.437499]
-    packagen21:[0.28,6.589954,1.437499]
-    packagen22:[0.28,6.589954,1.437499]
-    packagen30:[0.277780,6.585508,1.197499]
-    packagen31:[-0.002704,6.587167,1.197499]
-    packagen32:[-0.278755,6.587903,1.197499]
-
-    
-    Following cmds can be used for debugging
-
-    joint_value_0 = [-2.6011339293255, -2.3590931034680374, 1.8892899715041231, 0.32159706536877586, 0.47790973258301417, 0.036733309660952784]
-    ur5._group.go(joint_value_0,wait=True)
-
-    joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
-    ur5.hard_set_joint_angles(joint_angles,3)
-    rospy.sleep(0.1)
 
     #print(ur5._group.get_current_joint_values())
-    #lst_joint_angles_1 = [3.0961934425438518, -1.3963754984801797, -1.0265399546726863, -3.0762337959665755, -0.13615785709219352, -0.774448375073403]
-    #ur5.set_joint_angles(lst_joint_angles_1)
-    #print(ur5._group.get_pose_reference_frame())
-    #ur5.go_to_predefined_pose('straightUp')
 
-    x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.197499])
-    ur5.ee_cartesian_translation(x,y,z)
-
-    x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.197499])
-    
-    pose_values = ur5._group.get_current_pose().pose
-    wpose = geometry_msgs.msg.Pose()
-    wpose.position.x = pose_values + x
-    wpose.position.y =pose_values + y
-    wpose.position.z =pose_values + z
-    
-    wpose.orientation.x = 0.70742975018
-    wpose.orientation.y = 4.42711760246e-05          #  This orientation can be used to keep ur5 EE parallel to shelf for picking
-    wpose.orientation.z = -0.706783660356
-    wpose.orientation.w = 6.36666932928e-05
-
-    wpose.orientation.x = -0.5
-    wpose.orientation.y = -0.5          #  This orientation can be used to keep ur5 EE parallel to belt for picking
-    wpose.orientation.z = 0.5
-    wpose.orientation.w = 0.5
-    
-    ur5.go_to_pose(wpose)'''
-    
-    # initial pose: [-1.2293492585953212, -2.1738194420813457, 1.441557827511124, -2.409262753615087, -1.9398154828178953, 1.570006938451578]
-    # place_pose: [0.14653942088102667, -2.3895713216446923, -0.8652303068058416, -1.4568193558688627, 1.5697746925631542, 0.14583110972332314]
-    # or
-    # initial pose: [-3.141506391563417, -1.569915578473685, -9.893585598330645e-05, 7.267787673015391e-05, 3.0516974577565747e-05, 4.799584853820704e-05]
-    # place_pose: [-3.1415599856559107, -0.26754503851681743, -0.0001706684155955429, -1.2683213740666757, -1.4892632351823014, 1.5161846937061796e-05]
-
-    '''# saving initial pose
-    joint_angles=[-3.141506391563417, -1.569915578473685, -9.893585598330645e-05, 7.267787673015391e-05, 3.0516974577565747e-05, 4.799584853820704e-05]
-    ur5.hard_set_joint_angles(joint_angles,3)
-
-    rospy.sleep(0.5)
-
-    file_name = 'place_to_initial_pose.yaml'
-    file_path = ur5._file_path + file_name
-    
-    with open(file_path, 'w') as file_save:
-        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
-    
-    rospy.loginfo( "File saved at: {}".format(file_path) )
-   
-   # SAving place pose
-
-    joint_angles=[-3.1415599856559107, -0.26754503851681743, -0.0001706684155955429, -1.2683213740666757, -1.4892632351823014, 1.5161846937061796e-05]
-    ur5.hard_set_joint_angles(joint_angles,3)
-    
-    file_name = 'initial_to_place_pose.yaml'
-    file_path = ur5._file_path + file_name
-
-    rospy.sleep(0.5)
-
-    with open(file_path, 'w') as file_save:
-        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
-
-    rospy.loginfo( "File saved at: {}".format(file_path) )'''
-    
-
-    # Going for package pick from shelf
-
-    joint_angles=[-1.2293492585953212, -2.1738194420813457, 1.441557827511124, -2.409262753615087, -1.9398154828178953, 1.570006938451578]
-    ur5.hard_set_joint_angles(joint_angles,3)
-
-    x,y,z=ur5.calculate_cartesian_path([0,6.589954,1.197499])
-    
-    pose_values = ur5._group.get_current_pose().pose.position
-    
-    wpose = geometry_msgs.msg.Pose()
-    wpose.position.x = pose_values.x + x
-    wpose.position.y = pose_values.y + y
-    wpose.position.z = pose_values.z + z
-    
-    wpose.orientation.x = 0.707
-    wpose.orientation.y = 0          #  This orientation can be used to keep ur5 EE parallel to shelf for picking
-    wpose.orientation.z = -0.707
-    wpose.orientation.w = 0
-    
-    ur5.go_to_pose(wpose)
-
-    rospy.sleep(0.5)
-
-    file_name = 'initial_to_pkg31.yaml'
-    file_path = ur5._file_path + file_name
-
-    with open(file_path, 'w') as file_save:
-        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
-
-    rospy.loginfo( "File saved at: {}".format(file_path) )
-
-    result = ur5.gripper_service_call(True)
-
-    touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
-    ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
-    print(ur5.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=4))
-
-    ur5.ee_cartesian_translation(0,0.2,0)
-    rospy.sleep(0.5)
-    file_name = 'cp31_place.yaml'
-    file_path = ur5._file_path + file_name
-    
-    with open(file_path, 'w') as file_save:
-        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
-    
-    rospy.loginfo( "File saved at: {}".format(file_path) )
-    
-    
-    place_joint_angles = [0.14653942088102667, -2.3895713216446923, -0.8652303068058416, -1.4568193558688627, 1.5697746925631542, 0.14583110972332314]
-    ur5.hard_set_joint_angles(place_joint_angles,3)
-    rospy.sleep(0.5)
-    file_name = 'pkg31_to_place.yaml'
-    file_path = ur5._file_path + file_name
-    
-    with open(file_path, 'w') as file_save:
-		yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
-    
-    rospy.loginfo( "File saved at: {}".format(file_path) )
-
-    result = ur5.gripper_service_call(False)
-    ur5._scene.remove_attached_object(ur5._eef_link, name=ur5._box_name)
-    print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
-
-    # Removing the box from planning scene 	
-    ur5._scene.remove_world_object(ur5._box_name)
-
-    '''#Saving Trajectories for ur52
-
-    pose_values = ur5._group.get_current_pose().pose
-    wpose = geometry_msgs.msg.Pose()
-    wpose.position.x = pose_values.position.x
-    wpose.position.y =pose_values.position.y
-    wpose.position.z =pose_values.position.z + 0.1
-    wpose.orientation.x = -0.5
-    wpose.orientation.y = -0.5
-    wpose.orientation.z = 0.5
-    wpose.orientation.w = 0.5
-    ur5.go_to_pose(wpose)
-
-    print(ur5._group.get_current_joint_values())
-    joint_angles=[-1.2293492585953212, -2.1738194420813457, 1.441557827511124, -2.409262753615087, -1.9398154828178953, 1.570006938451578]
-    ur5.set_joint_angles(joint_angles)
-    joint_angles=[0.14653942088102667, -2.3895713216446923, -0.8652303068058416, -1.4568193558688627, 1.5697746925631542, 0.14583110972332314]
-    ur5.set_joint_angles(joint_angles)
-    
     joint_angles=[-1.4354400849363396, -1.2523803960992197, -0.9400033447697549, -0.9492421132772018, -1.690798461692653, 1.5699444569096448]
     ur5.set_joint_angles(joint_angles)
-    
+
+    '''joint_angles=[0.14648733592875196, -2.38179315608067, -0.7257155148810783, -1.6048803093744644, 1.570796326803042, 0.14648733591716212]
+    ur5.hard_set_joint_angles(joint_angles,3)
+
     rospy.sleep(0.5)
     file_name = 'start_to_initial_pose.yaml'
     file_path = ur5._file_path + file_name
@@ -435,9 +264,9 @@ def main():
     with open(file_path, 'w') as file_save:
         yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
     
-    rospy.loginfo( "File saved at: {}".format(file_path) )
+    rospy.loginfo( "File saved at: {}".format(file_path) )'''
 
-    joint_angles=[-1.677851795541076, -1.193402632379506, 1.2809171265671475, -1.6590883174733078, -1.5713969000516617, 1.4627511449783928]
+    '''joint_angles=[-1.677851795541076, -1.193402632379506, 1.2809171265671475, -1.6590883174733078, -1.5713969000516617, 1.4627511449783928]
     ur5.hard_set_joint_angles(joint_angles,3)
     
     rospy.sleep(0.5)
@@ -461,6 +290,126 @@ def main():
     
     rospy.loginfo( "File saved at: {}".format(file_path) )'''
 
+    '''
+    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
+    joint_value_0 = [-2.6011339293255, -2.3590931034680374, 1.8892899715041231, 0.32159706536877586, 0.47790973258301417, 0.036733309660952784]
+    ur5._group.go(joint_value_0,wait=True)
+
+    joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
+    ur5.hard_set_joint_angles(joint_angles,3)
+    rospy.sleep(0.1)
+    #print(ur5._group.get_current_joint_values())
+    #lst_joint_angles_1 = [3.0961934425438518, -1.3963754984801797, -1.0265399546726863, -3.0762337959665755, -0.13615785709219352, -0.774448375073403]
+    #ur5.set_joint_angles(lst_joint_angles_1)
+    #print(ur5._group.get_pose_reference_frame())
+    #ur5.go_to_predefined_pose('straightUp')'''
+    '''x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.197499])
+    ur5.ee_cartesian_translation(x,y,z)
+    x,y,z=ur5.calculate_cartesian_path([-0.28,6.589954,1.197499])
+    pose_values = ur5._group.get_current_pose().pose
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x = pose_values + x
+    wpose.position.y =pose_values + y
+    wpose.position.z =pose_values + z
+    wpose.orientation.x = -0.707
+    wpose.orientation.y =0
+    wpose.orientation.z = 0
+    wpose.orientation.w = 0.707
+    ur5.go_to_pose(wpose)'''
+    '''rospy.sleep(0.5)
+    file_name = 'ur5_2_initial_pose.yaml'
+    file_path = ur5._file_path + file_name
+    
+    with open(file_path, 'w') as file_save:
+        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
+    
+    rospy.loginfo( "File saved at: {}".format(file_path) )'''
+    """
+    pose_values = ur5._group.get_current_pose().pose
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x =0.7500
+    wpose.position.y =0.0299
+    wpose.position.z =1.400134
+    wpose.orientation.x = -0.5
+    wpose.orientation.y = -0.5
+    wpose.orientation.z = 0.5
+    wpose.orientation.w = 0.5
+    ur5.go_to_pose(wpose)
+    rospy.sleep(0.5)
+    file_name = 'yellow_box_place.yaml'
+    file_path = ur5._file_path + file_name
+
+    with open(file_path, 'w') as file_save:
+        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
+
+    rospy.loginfo( "File saved at: {}".format(file_path) )
+    
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x =-0.842357319327
+    wpose.position.y =0.128353094355
+    wpose.position.z =1.18518995714
+    wpose.orientation.x = -0.5
+    wpose.orientation.y = -0.5
+    wpose.orientation.z = 0.5
+    wpose.orientation.w = 0.5
+    ur5.go_to_pose(wpose)
+    """
+
+
+    '''pose_values = ur5._group.get_current_pose().pose
+    wpose = geometry_msgs.msg.Pose()
+    wpose.position.x =0.8172
+    wpose.position.y =0.10915
+    wpose.position.z =0.9445
+    wpose.orientation.x = -0.5
+    wpose.orientation.y = -0.5
+    wpose.orientation.z = 0.5
+    wpose.orientation.w = 0.5
+    ur5.go_to_pose(wpose)
+    #rospy.sleep(0.5)
+    file_name = 'green_box_place.yaml'
+    file_path = ur5._file_path + file_name
+
+    with open(file_path, 'w') as file_save:
+        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
+
+    rospy.loginfo( "File saved at: {}".format(file_path) )'''
+
+    
+    """
+    result = ur5.gripper_service_call(True)
+    touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
+    ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
+    print(ur5.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=4))
+
+    ur5.ee_cartesian_translation(0,0.25,0)
+    rospy.sleep(0.5)
+    file_name = 'cp32_place.yaml'
+    file_path = ur5._file_path + file_name
+    
+    with open(file_path, 'w') as file_save:
+        yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
+    
+    rospy.loginfo( "File saved at: {}".format(file_path) )
+    
+    
+    lst_joint_angles_2 = [0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
+    ur5.hard_set_joint_angles(lst_joint_angles_2,3)
+    rospy.sleep(0.5)
+    file_name = 'pkg32_to_place.yaml'
+    file_path = ur5._file_path + file_name
+    
+    with open(file_path, 'w') as file_save:
+		yaml.dump(ur5._computed_plan, file_save, default_flow_style=True)
+    
+    rospy.loginfo( "File saved at: {}".format(file_path) )
+
+    result = ur5.gripper_service_call(False)
+    ur5._scene.remove_attached_object(ur5._eef_link, name=ur5._box_name)
+    print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
+
+    # Removing the box from planning scene 	
+    ur5._scene.remove_world_object(ur5._box_name)"""
 
     del ur5
 

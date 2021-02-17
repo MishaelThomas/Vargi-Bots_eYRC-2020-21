@@ -1,11 +1,27 @@
 <launch>
-  <!-- Spawn Task-2 Models in Gazebo -->
-    <include file="$(find pkg_vb_sim)/launch/task4_simulation.launch" />
-	
-	<!-- Launch two move_group nodes for the two UR5 Arms -->
-  <include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" /> 
 
-  <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>
-  <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen"/>
+<!-- Launch two move_group nodes for the two UR5 Arms -->
+  <include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />
+  <!-- Spawn Task-2 Models in Gazebo -->
+    <include file="$(find pkg_vb_sim)/launch/task4_simulation.launch" /> 
+     
+    
+    <group ns = "ur5_1">
+    <!-- Add shelf to moveit! planning scene in Rviz -->
+    <arg name = "scene_file" default = "$(find pkg_task4)/config/rviz/ur5_1_with_obstacles.scene" />
+    <node name="moveit_publish_scene_from_text" pkg="moveit_ros_planning" type="moveit_publish_scene_from_text"
+       args="$(arg scene_file)"/>   
+    </group>  
+    
+    
+  <!-- Recording Bag File for Submission -->
+    <arg name="record" default="false"/>
+    <arg name="rec_name" default="task4.bag"/>
+
+    <group if="$(arg record)">
+        <node name="rosbag_record_pick" pkg="rosbag" type="record"
+       args="record -O $(find pkg_task4)/bag_files/$(arg rec_name) --chunksize=10 /eyrc/vb/ur5_1/vacuum_gripper/logical_camera/ur5_1 /eyrc/vb/ur5_2/vacuum_gripper/logical_camera/ur5_2" output="screen"/>
+ </group>
+
  
 </launch>

@@ -1,32 +1,42 @@
 #! /usr/bin/env python
 
+''' Importing necessary modules for using Moveit Motion Planning framework,
+    implementing ROS Action commands and Playing saved trajectories'''
+
 import rospy
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
-from threading import Thread
 import yaml
-import os
-import math
-import time
 import sys
-import copy
+import time
 
+# Service files are required for implementing Vacuum Gripper
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
-from pkg_vb_sim.msg import LogicalCameraImage
+from pkg_task5.msg import msgDisOrder
+from pkg_ros_iot_bridge.msg import msgIncOrder
 
-task_status=False
-item_data={"Red":{"item_type":"Medicine","Priority":"HP","Cost":"250"},"Yellow":{"item_type":"Food","Pgitriority":"MP","Cost":"150"},"Green":{"item_type":"Clothes","Priority":"LP","Cost":"100"}}
+# This dictionary is created to store the color of packages as decoded using QR code. It is updated later in main()
+package_data = {}
 
-class Ur5Moveit:
+exec_list = []
+id_list = []
+
+pkg_count, current,r ,y = 0, 0, 0, 0
+
+item_info = { "Medicine":"red", "Food":"yellow", "Clothes":"green"}
+
+class Ur5_Moveit:
 
     # Constructor
     def __init__(self):
 
+        # Initialzing the ROS Node
         rospy.init_node('node_ur5_1_pick', anonymous=True)
 
+        # Defining attributes required for Moveit
         self._robot_ns = '/ur5_1'
         self._planning_group = "manipulator"
         
@@ -37,15 +47,18 @@ class Ur5Moveit:
         self._display_trajectory_publisher = rospy.Publisher( self._robot_ns + '/move_group/display_planned_path', moveit_msgs.msg.DisplayTrajectory, queue_size=1)
         self._exectute_trajectory_client = actionlib.SimpleActionClient( self._robot_ns + '/execute_trajectory', moveit_msgs.msg.ExecuteTrajectoryAction)
         self._exectute_trajectory_client.wait_for_server()
-
+    
         self._planning_frame = self._group.get_planning_frame()
         self._eef_link = self._group.get_end_effector_link()
         self._group_names = self._robot.get_group_names()
         
-        rospy.Subscriber('/ros_iot_bridge/mqtt/sub',msgMqttSub,self.cb_incoming_order)
-
+        # Initiating Vacuum Gripper service
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
+
+        rospy.Subscriber("incoming_order",msgIncOrder,self.cb_update_exec_dict)
+
+        self.dispatched_order_pub = rospy.Publisher('dispatched_order',msgDisOrder,queue_size=5)
         
         rospy.loginfo(
             '\033[94m' + "Planning Group: {}".format(self._planning_frame) + '\033[0m')
@@ -55,24 +68,50 @@ class Ur5Moveit:
             '\033[94m' + "Group Names: {}".format(self._group_names) + '\033[0m')
 
 
+        # Settings for file path from where we will be playing the saved trajectories files
         rp = rospkg.RosPack()
-        self._pkg_path = rp.get_path('pkg_task4')
-        self._file_path = self._pkg_path + '/config/saved_trajectories/'
+        self._pkg_path = rp.get_path('pkg_task5')
+        self._file_path = self._pkg_path + '/config/ur5_1_saved_trajectories/'
         rospy.loginfo( "Package Path: {}".format(self._file_path) )
 
 
         rospy.loginfo('\033[94m' + " >>> Ur5Moveit init done." + '\033[0m')
 
+    def cb_update_exec_dict(self, msg):
+        
+        global package_data, pkg_count, current, exec_list, id_list, r ,y
+        pkg = package_data.keys()[package_data.values().index(item_info[msg.item_type])]
+        del package_data[pkg]
+
+        if msg.item_type == 'Medicine':
+            exec_list.insert(r,pkg)
+            id_list.insert(r,[msg.order_id,msg.item_type])
+            r += 1
+            y += 1
+        elif msg.item_type == 'Food':
+            exec_list.insert(y,pkg)
+            id_list.insert(y,[msg.order_id,msg.item_type])
+            y += 1
+        elif msg.item_type == 'Clothes':
+            exec_list.append(pkg)
+            id_list.append([msg.order_id,msg.item_type])
+
+        print(exec_list)
+        pkg_count += 1
+        
+
+    # Function to execute a saved trajectory
     def moveit_play_planned_path_from_file(self, arg_file_path, arg_file_name):
 		file_path = arg_file_path + arg_file_name
 		
 		with open(file_path, 'r') as file_open:
 			loaded_plan = yaml.load(file_open)
 		
-		ret = self._group.execute(loaded_plan)
-		# rospy.logerr(ret)
+		ret = self._group.execute(loaded_plan) # Execution of trajectory file
+
 		return ret
     
+    # Function to confirm the execution of saved trajectories in few attempts
     def moveit_hard_play_planned_path_from_file(self, arg_file_path, arg_file_name, arg_max_attempts):
 		number_attempts = 0
 		flag_success = False
@@ -81,15 +120,16 @@ class Ur5Moveit:
 			number_attempts += 1
 			flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
 			rospy.logwarn("attempts: {}".format(number_attempts) )
-			# # self.clear_octomap()
 		
 		return True
 
-    #function to pick boxes from shelf and place them on conveyer belt
+    # Function to pick boxes from shelf and place them on conveyer belt. It uses the package attributes to decide
+    # which trajectory is to be played
     def pick_place(self,pkg_to_pick):
         
-        if(pkg_to_pick=="packagen31"):
+        if(pkg_to_pick=="packagen31"):# or pkg_to_pick=="packagen00" or pkg_to_pick=="packagen02" or pkg_to_pick=="packagen32"):
 
+            
             rospy.logwarn("1. Playing home_to_pkg31 Trajectory File")
             self.moveit_hard_play_planned_path_from_file(self._file_path, 'home_to_pkg31.yaml',3)
 
@@ -113,7 +153,7 @@ class Ur5Moveit:
         
         else:
             
-            m = pkg_to_pick[8]
+            m = pkg_to_pick[8] # Values of m and n are used ahead to decide the trajectory file to be executed
             n = pkg_to_pick[9]
 
             rospy.logwarn("1. Playing place_to_pkg"+m+n+" Trajectory File")
@@ -126,14 +166,6 @@ class Ur5Moveit:
             rospy.logwarn("1. Playing pkg"+m+n+"_to_place Trajectory File")
             self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg'+m+n+'_to_place.yaml',3)
             result = self.gripper_service_call(False)
-    
-    def cb_incoming_order(self,order_data):
-        global item_data
-        incoming_order=eval(order_data.message.decode('utf-8')) #a dict containing whole data of incoming order
-        all_orders.
-        Priority_and_Cost=[ [item_data[key]["Priority"],item_data[key]["Cost"]] for key in item_data.keys() if item_data[key]["item_type"]==incoming_order["item"]]
-        URL_incoming_orders="https://script.google.com/macros/s/AKfycbwNnsTuOZ24_ZMqM5dBKJaqCfw4v3kJeDHEAVpiTycCxJka06EU8b2H2A/exec"
-        iot.spreadsheet_write(URL_incoming_orders,Id="Incoming Orders",Team_Id="VB#1194",Unique_Id="PaThJaPa",Order_Id=incoming_order["order_id"],Order_Date_and_Time=incoming_order["order_time"],Item=incoming_order["item"],Priority=Priority_and_Cost[0][0],Order_Quantity=incoming_order["qty"],City=incoming_order["city"],Longitude=incoming_order["lon"],Latitude=incoming_order["lat"],Cost=Priority_and_Cost[0][1])
 
     # Destructor
 
@@ -146,56 +178,42 @@ class Ur5Moveit:
 
 def main():
 
-    ur5_1 = Ur5Moveit()
-    num_pkg_to_pick=9
-    pkgs_picked_and_placed = 0
-    pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen30', 'packagen32', 'packagen01']
+    # Creating the object of Ur5_Moveit class
+    ur5_1 = Ur5_Moveit()
+
+    global package_data, pkg_count, current ,r ,y
     
-    while(pkgs_picked_and_placed < num_pkg_to_pick and not rospy.is_shutdown()):
+    package_data = rospy.get_param("pkg_clr")
+    print(package_data)
+    
+    while current <= pkg_count and current < 9:
 
-        ur5_1.pick_place(pkg_to_pick[pkgs_picked_and_placed])
-        pkgs_picked_and_placed = pkgs_picked_and_placed + 1
+        if current != pkg_count:
+            pkg = exec_list[current]
+            order_id = id_list[current][0]
+            if id_list[current][1] == 'Clothes':
+                r+=1
+                y+=1
+            elif id_list[current][1] == 'Food':
+                r+=1
 
+            current += 1
+            
+            rospy.sleep(2.5)
+            print(str(pkg) + "dispatched")         # Here code regarding pick and place needs to be substituted       
+            dispatch_message = msgDisOrder()
+            dispatch_message.pkg_name = pkg
+            dispatch_message.order_id = order_id
+            dispatch_message.time = str(time.time())
+        
+            ur5_1.dispatched_order_pub.publish(dispatch_message)
+        
+            print(dispatch_message)
 
+    # Removing the object of Ur5Moveit Class
     del ur5_1
 
-    
-    """
-    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
-
-
-    rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'home_to_pkg21.yaml')
-    ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
-
-    rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'home_to_pkg21.yaml')
-
-
-    rospy.logwarn("1. Playing cp21_pick Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_pick.yaml')
-
-    result = ur5.gripper_service_call(True)
-    touch_links = ur5._robot.get_link_names(group=ur5._planning_group)  
-    ur5._scene.attach_box(ur5._eef_link,ur5._box_name, touch_links = touch_links)
-    print(ur5.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=4))
-
-    rospy.logwarn("1. Playing cp21_place Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp21_place.yaml')
-
-    rospy.logwarn("1. Playing pkg21_to_place Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'pkg21_to_place.yaml')
-
-    result = ur5.gripper_service_call(False)
-    ur5._scene.remove_attached_object(ur5._eef_link, name=ur5._box_name)
-    print(ur5.wait_for_state_update(box_is_attached=False, box_is_known=True, timeout=4))
-
-
-    # Removing the box from planning scene 	
-    ur5._scene.remove_world_object(ur5._box_name)"""
-
-
-
+# main function is called when we execute this python file
 if __name__ == '__main__':
     main()
 

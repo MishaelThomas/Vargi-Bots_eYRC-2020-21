@@ -23,7 +23,7 @@ class Ur5Moveit:
 
         rospy.init_node('node_moveit_eg6', anonymous=True)
 
-        self._robot_ns = '/ur5_1'
+        self._robot_ns = '/ur5_2'
         self._planning_group = "manipulator"
         
         self._commander = moveit_commander.roscpp_initialize(sys.argv)
@@ -59,7 +59,7 @@ class Ur5Moveit:
 
         rp = rospkg.RosPack()
         self._pkg_path = rp.get_path('pkg_task4')
-        self._file_path = self._pkg_path + '/config/ur5_1_saved_trajectories/'
+        self._file_path = self._pkg_path + '/config/ur5_2_saved_trajectories/'
         rospy.loginfo( "Package Path: {}".format(self._file_path) )
 
 
@@ -150,17 +150,17 @@ def main():
     #ur5._scene.add_box(ur5._box_name,ur5._box_pose, size=(0.15, 0.15, 0.15))
 
     rospy.logwarn("1. Playing home_to_pkg21 Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'home_to_pkg31.yaml')
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'start_to_initial_pose.yaml')
 
 
     rospy.logwarn("1. Playing cp21_pick Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'cp31_place.yaml')
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'initial_pose_to_green_bin.yaml')
 
     #joint_angles=[0.14655978301275052, -2.4608101683915473, -1.0175133809253598, -1.1476540717685673, 1.5579328111748776, 0.1060079478849465]
     #ur5._group.go(joint_angles,wait=True)
 
     rospy.logwarn("1. Playing place_to_pkg10 Trajectory File")
-    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'pkg31_to_place.yaml')
+    ur5.moveit_play_planned_path_from_file(ur5._file_path, 'green_bin_to_initial_pose.yaml')
 
 
     '''result = ur5.gripper_service_call(True)

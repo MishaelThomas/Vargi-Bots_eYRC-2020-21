@@ -1,4 +1,5 @@
 <launch>
+<<<<<<< HEAD
   <!-- Spawn Task-2 Models in Gazebo -->
     <include file="$(find pkg_vb_sim)/launch/task5_simulation.launch" />
 	
@@ -13,3 +14,40 @@
   <node name="node_ur5_2_place" pkg="pkg_task5" type="node_ur5_2_place.py" output="screen"/>
  
 </launch>
+=======
+
+	<!-- Spawn Task-2 Models in Gazebo -->
+    <include file="$(find pkg_vb_sim)/launch/task5_world.launch" />
+
+    <!-- Spawn T5 Boxes -->
+    <rosparam file ="$(find pkg_vb_sim)/config/config_package_colour.yaml"/>
+    <node name= "task5_spawn_models" pkg= "pkg_vb_sim" type="task5_spawn_models.py"/>
+    
+
+	<include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />
+	
+	<arg name="node_start_delay_1" default="20.0" />
+	<arg name="node_start_delay_2" default="40.0" />
+	<arg name="node_start_delay_3" default="60.0" />
+	
+    <!-- Spawn two UR5 in Gazebo -->
+    <include file = "$(find pkg_vb_sim)/launch/two_ur5_gazebo.launch"/>
+    
+    <rosparam file="$(find pkg_ros_iot_bridge )/config/config_pyiot.yaml"/>
+    <node name= "node_ros_iot_bridge" pkg="pkg_ros_iot_bridge" type="node_ros_iot_bridge.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_1); $0 $@' " /> 
+    
+    
+    <!-- Run Conveyor Belt Service Server -->
+    <node name= "node_service_server_conveyor_belt" pkg= "pkg_vb_sim" type="node_service_server_conveyor_belt.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_1); $0 $@'" />
+    
+    <rosparam file="$(find pkg_task5 )/config/config_pkg_color.yaml"/>
+	 <node name= "node_pkg_color_detection" pkg="pkg_task5" type="node_package_color_detection.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@'" /> 
+
+    <!-- Run the Online Order Placer Node -->
+    <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>
+    <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3); $0 $@'" /> 	 
+    
+    
+	
+</launch>
+>>>>>>> origin/main
