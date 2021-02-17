@@ -1,2 +1,0 @@
-string Order_Id
-string Pkg_color

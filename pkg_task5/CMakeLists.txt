@@ -52,7 +52,7 @@ find_package(catkin REQUIRED COMPONENTS
     FILES
 
     dispatch_ship_msg.msg
-    msgur51_to_ur52.msg
+    msgDisOrder_to_ur5_2.msg
 #   Message2.msg
 
 

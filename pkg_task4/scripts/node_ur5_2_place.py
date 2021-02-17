@@ -361,14 +361,9 @@ class Ur5_Moveit:
         self.gripper_service_call(True)
         
     # Function to take ur5 arm to specified joint angles
-<<<<<<< HEAD
-    """def set_joint_angles(self, arg_list_joint_angles):
-        self._group.set_joint_value_target(arg_list_joint_angles)
-=======
     def set_joint_angles(self, arg_list_joint_angles):
 
 		self._group.set_joint_value_target(arg_list_joint_angles)
->>>>>>> origin/main
 		flag_plan = self._group.go(wait=True)
 
 		return flag_plan"""

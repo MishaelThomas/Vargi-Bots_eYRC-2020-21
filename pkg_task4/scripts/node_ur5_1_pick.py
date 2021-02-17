@@ -9,27 +9,12 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
-<<<<<<< HEAD
-import time
-import datetime
-
-=======
->>>>>>> origin/main
 import yaml
 import sys
 
 # Service files are required for implementing Vacuum Gripper
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
-<<<<<<< HEAD
-from pkg_vb_sim.msg import LogicalCameraImage
-from pkg_ros_iot_bridge.msg import msgOrder   
-from pkg_task5.msg import dispatch_ship_msg
-from pkg_task5.msg import msgur51_to_ur52
-
-task_status=False
-=======
 from pkg_task4.msg import msgDisOrder
->>>>>>> origin/main
 
 class Ur5_Moveit:
 
@@ -54,17 +39,8 @@ class Ur5_Moveit:
         self._planning_frame = self._group.get_planning_frame()
         self._eef_link = self._group.get_end_effector_link()
         self._group_names = self._robot.get_group_names()
-<<<<<<< HEAD
-
-        #TESTING CODE
-        rospy.Subscriber("/order_to_ur5_1",msgOrder,self.order_callback)        
-        self.dispatch_pub=rospy.Publisher("/dispatching_shipping_info",dispatch_ship_msg,queue_size=10)
-        self.to_ur52_pub=rospy.Publisher("/ur51_to_ur52",msgur51_to_ur52,queue_size=10)
-        #########################################
-=======
         
         # Initiating Vacuum Gripper service
->>>>>>> origin/main
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
 
@@ -78,11 +54,7 @@ class Ur5_Moveit:
             '\033[94m' + "Group Names: {}".format(self._group_names) + '\033[0m')
 
 
-<<<<<<< HEAD
-
-=======
         # Settings for file path from where we will be playing the saved trajectories files
->>>>>>> origin/main
         rp = rospkg.RosPack()
         self._pkg_path = rp.get_path('pkg_task4')
         self._file_path = self._pkg_path + '/config/ur5_1_saved_trajectories/'
@@ -195,19 +167,6 @@ class Ur5_Moveit:
 
 def main():
 
-<<<<<<< HEAD
-    ur5_1 = Ur5Moveit()
-    """
-    num_pkg_to_pick=9
-    pkgs_picked_and_placed = 0
-    pkg_to_pick=['packagen31', 'packagen10', 'packagen11', 'packagen12', 'packagen20', 'packagen21', 'packagen30', 'packagen32', 'packagen01']
-    
-    while(pkgs_picked_and_placed < num_pkg_to_pick and not rospy.is_shutdown()):
-
-        ur5_1.pick_place(pkg_to_pick[pkgs_picked_and_placed])
-        pkgs_picked_and_placed = pkgs_picked_and_placed + 1"""
-    rospy.spin()
-=======
     # Creating the object of Ur5_Moveit class
     ur5_1 = Ur5_Moveit()
     
@@ -223,7 +182,6 @@ def main():
 
     # Going to initial position after completing the required task
     ur5_1.go_to_predefined_pose("allZeros")
->>>>>>> origin/main
 
     # Removing the object of Ur5Moveit Class
     del ur5_1

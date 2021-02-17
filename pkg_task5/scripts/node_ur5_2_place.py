@@ -9,25 +9,16 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
-<<<<<<< HEAD
-from threading import Thread
+#import rospkg
 
-# Importing modules required for performing functions related to computer vision and QR decoding
-import cv2
-from std_msgs.msg import String
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
-from pyzbar.pyzbar import decode
-
-from datetime import date
+import datetime 
+import time
 from pyiot import iot
 from pkg_ros_iot_bridge.msg import msgMqttSub
 from pkg_task5.msg import dispatch_ship_msg
-from pkg_task5.msg import msgur51_to_ur52
-=======
+from pkg_task5.msg import msgDisOrder_to_ur5_2
 import yaml
 import threading
->>>>>>> origin/main
 
 # Service files are required for implementing Vacuum Gripper and Conveyor Belt. Hence, we can use Ros Service to execute them
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
@@ -37,7 +28,6 @@ from pkg_vb_sim.srv import conveyorBeltPowerMsg, conveyorBeltPowerMsgRequest, co
 # Importing msg file for obtaining the feed of Logical cameras
 from pkg_vb_sim.msg import LogicalCameraImage
 
-from pkg_task5.msg import msgDisOrder
 
 work_done = False
 flag = True
@@ -81,16 +71,10 @@ class Ur5_Moveit:
 
         # Handle for subscibing to ROS topic "/eyrc/vb/logical_camera_2"
         rospy.Subscriber("/eyrc/vb/logical_camera_2",LogicalCameraImage,self.cb_capture_model)
-<<<<<<< HEAD
-        
-        #TEST CODE
-        self.ship_pub=rospy.Publisher("/dispatching_shipping_info",dispatch_ship_msg,queue_size=10)
-        rospy.Subscriber("/ur51_to_ur52",msgur51_to_ur52,self.to_pick)
-        ###########################################################
-=======
->>>>>>> origin/main
+        rospy.Subscriber("DispatchedOrder/to_ur5_2",msgDisOrder_to_ur5_2,self.cb_exec_sort)
 
-        rospy.Subscriber('dispatched_order',msgDisOrder,self.cb_exec_sort)
+        self.shipOrder_pub=rospy.Publisher("/dispatching_shipping_info",dispatch_ship_msg,queue_size=10)
+
         
         # Creating a handle to use Vacuum Gripper service
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_2',timeout=1)
@@ -108,10 +92,11 @@ class Ur5_Moveit:
 
         rospy.loginfo('\033[94m' + " >>> Init done." + '\033[0m')
 
-    def cb_exec_sort(self, pkg_name, order_id, time):
-        
+    def cb_exec_sort(self, pkg_to_ship):
+        print("---------")
+        print(pkg_to_ship.pkg_name)
         global work_done, flag
-        item_color = rospy.get_param(pkg_name)
+        item_color = rospy.get_param(pkg_to_ship.pkg_name)
 
         if flag:
             self.conveyor_belt_service_call(100)
@@ -125,7 +110,7 @@ class Ur5_Moveit:
         joint_angles = [0.14648733592875196, -2.38179315608067, -0.7257155148810783, -1.6048803093744644, 1.570796326803042, 0.14648733591716212]
         self.hard_set_joint_angles(joint_angles,3)
         work_done = False
-        thread1 = threading.Thread (target = self.place_pkg,args = (item_color,))
+        thread1 = threading.Thread (target = self.place_pkg,args = (item_color,pkg_to_ship.order_id))
         thread2 = threading.Thread (target = self.control_conveyor_belt, args = (self.model[1].type,))
         thread1.start()
         thread2.start()
@@ -219,7 +204,7 @@ class Ur5_Moveit:
                 # self.clear_octomap()
 
     # calculate_cartesian_path function provides the exact position of package using the frame of logical_camera_2 
-    def calculate_package_distance (self,package_pose_wrt_camera): 
+    def calculate_pkg_distance (self,package_pose_wrt_camera): 
         
         # Transforming the package position from logical camera's frame
         pose_package_wrt_world=[-0.8+package_pose_wrt_camera.position.z,
@@ -255,8 +240,15 @@ class Ur5_Moveit:
         # Attaching the package
         self.gripper_service_call(True)
 
+
+    def get_time_str(self):
+        timestamp = int(time.time())
+        value = datetime.datetime.fromtimestamp(timestamp)
+        str_time = value.strftime('%d/%m/%Y %H:%M:%S')
+        return str_time
+
     # This function sorts the attached package on the basis of its color and calls hard_set_joint_angles() to execute the same
-    def place_pkg(self,package_color):
+    def place_pkg(self,package_color,order_id):
 
         global work_done, pkgs_sorted
         
@@ -275,17 +267,11 @@ class Ur5_Moveit:
         self.moveit_hard_play_planned_path_from_file(self._file_path, file_1_name ,3)
         rospy.sleep(0.1)
         self.gripper_service_call(False)
+        self.shipOrder_pub.publish(Order_Id=order_id,Date_and_Time=self.get_time_str(),task_done="Shipped")
         self.moveit_hard_play_planned_path_from_file(self._file_path, file_2_name ,3)
         work_done = True
         pkgs_sorted += 1
 
-<<<<<<< HEAD
-    #TESTCODE########################################################
-    def to_pick(self,pick_pkg):
-        rospy.sleep(10)
-        self.ship_pub.publish(Order_Id=pick_pkg.Order_Id,Date_and_Time="1",task_done="Shipped")
-    #####################################################################
-=======
     def control_conveyor_belt(self, pkg_picked):
         
         global work_done
@@ -297,7 +283,6 @@ class Ur5_Moveit:
         while not work_done:
             pass
 
->>>>>>> origin/main
     # Destructor
     def __del__(self):
         moveit_commander.roscpp_shutdown()
@@ -308,65 +293,12 @@ def main():
     
     # Creating an object of Ur5_moveit class
     ur5_2 = Ur5_Moveit()
-<<<<<<< HEAD
-    # Creating an object of Camera class
-    """camera2D = Camera()
-    shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
-    
-    # Updating the packages dictionary using QR Decoding
-    camera2D.get_qr_data(shelf_image)
-    print(package_data)"""
-    rospy.spin()
-    #thread for updating inventory_spreadsheet
-    #update_inventory_sheet()
-
-    
-    
-    
-    # Initiating the conveyor belt and heading ur5 arm towards initial pick position 
-    """ur5_2.conveyor_belt_service_call(100)
-    #ur5_2.initial_pose()
-    #joint_values=[0.1464142248418927, -2.6458200146338315, -0.6398742469103862, -1.4258978429985385, 1.570130610400093, 0.14628912718068943]
-    #ur5_2._group.go(joint_values,wait=True)
-    ur5_2.pick_pkg()
-    print("------init_pose------")
-    print(ur5_2._group.get_current_pose())
-
-    # This loop is used to reach to detected packages, attaching them to ur5 arm using pick_pkg() and sorting 
-    # them using place_pkg(). Meanwhile it stops the conveyor belt.
-    while len(pkg_picked) != len(pkg_to_pick):        
-        
-        if len(ur5_2.model.models) > 1:
-            
-            for obj in ur5_2.model.models:
-                if obj.type != "ur5":
-                    #rospy.sleep(0.5)
-                    while(not ur5_2.gripper_service_call(True).result):
-                        continue
-                    print("----out of loop----")
-                    rospy.sleep(0.0001)
-                    ur5_2.gripper_service_call(True)
-                    ur5_2.conveyor_belt_service_call(0)
-                    #rospy.sleep(0.1)
-                    #ur5_2.pick_pkg(ur5_2.model.models[1].pose)
-                    #print(ur5_2._group.get_current_pose())
-                    #ur5_2.initial_pose()
-                    #ur5_2.conveyor_belt_service_call(100)
-                    #ur5_2.place_pkg(obj.type)
-                    #rospy.sleep(0.1)
-                    #ur5_2.pick_pkg(ur5_2.model.models[1].pose)
-                    print("------pick_pose----")
-                    #print(ur5_2._group.get_current_pose())"""
-                    #pkg_picked.append(obj.type)
-                    
-=======
     global pkgs_sorted
 
     ur5_2.moveit_hard_play_planned_path_from_file(ur5_2._file_path, 'start_to_initial_pose.yaml',3)
 
     while pkgs_sorted < 9:
         pass
->>>>>>> origin/main
     
     # Removing the object of Ur5_Moveit class
     del ur5_2

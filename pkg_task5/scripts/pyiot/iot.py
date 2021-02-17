@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 from multiprocessing.dummy import Pool
 import time
 import requests
