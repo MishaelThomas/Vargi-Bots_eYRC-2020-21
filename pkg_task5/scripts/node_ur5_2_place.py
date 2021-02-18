@@ -83,10 +83,10 @@ class Ur5_Moveit:
 
         rospy.loginfo('\033[94m' + " >>> Init done." + '\033[0m')
 
-    def cb_exec_sort(self, pkg_name, order_id, time):
+    def cb_exec_sort(self, msg):
         
         global work_done, flag
-        item_color = rospy.get_param(pkg_name)
+        item_color = rospy.get_param(msg.pkg_name)
 
         if flag:
             self.conveyor_belt_service_call(100)
