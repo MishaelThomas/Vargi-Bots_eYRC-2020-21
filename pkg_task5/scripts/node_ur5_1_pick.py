@@ -81,30 +81,11 @@ class Ur5_Moveit:
         rospy.loginfo('\033[94m' + " >>> Ur5Moveit init done." + '\033[0m')
 
     def cb_update_exec_dict(self, msg):
-<<<<<<< HEAD
-        print("------order_to_pick_recieved-----")
-        global package_data, pkg_count, current, exec_list, id_list, r ,y
-        pkg = package_data.keys()[package_data.values().index(item_info[msg.Item_type])]
-        del package_data[pkg]
-
-        if msg.Item_type == 'Medicine':
-            exec_list.insert(r,pkg)
-            id_list.insert(r,[msg.Order_Id,msg.Item_type])
-            r += 1
-            y += 1
-        elif msg.Item_type == 'Food':
-            exec_list.insert(y,pkg)
-            id_list.insert(y,[msg.Order_Id,msg.Item_type])
-            y += 1
-        elif msg.Item_type == 'Clothes':
-            exec_list.append(pkg)
-            id_list.append([msg.Order_Id,msg.Item_type])
-=======
         
         global package_data, pkg_count, current, exec_list, priority_list
         
-        priority = item_info[msg.item_type][1]
-        pkg = package_data.keys()[package_data.values().index(item_info[msg.item_type][0])]
+        priority = item_info[msg.Item_type][1]
+        pkg = package_data.keys()[package_data.values().index(item_info[msg.Item_type][0])]
         
         del package_data[pkg]
 
@@ -117,8 +98,7 @@ class Ur5_Moveit:
                 break
         
         priority_list.insert(j,priority)
-        exec_list.insert(j,[pkg,msg.order_id])
->>>>>>> 3355c43cf274f1fb3e698606877a4f19aaac9b17
+        exec_list.insert(j,[pkg,msg.Order_Id])
 
         print(exec_list)
         pkg_count += 1
@@ -212,14 +192,10 @@ def main():
             dispatch_message.pkg_name = pkg
             dispatch_message.order_id = order_id
         
-<<<<<<< HEAD
             ur5_1.to_ur5_2pub.publish(dispatch_message)
             ur5_1.dispatchOrder_pub.publish(Order_Id=order_id,Date_and_Time= ur5_1.get_time_str(),task_done="Dispatched")
         
             print(dispatch_message)
-=======
-            ur5_1.dispatched_order_pub.publish(dispatch_message)
->>>>>>> 3355c43cf274f1fb3e698606877a4f19aaac9b17
 
     # Removing the object of Ur5Moveit Class
     del ur5_1

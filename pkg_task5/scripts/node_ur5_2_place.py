@@ -92,22 +92,14 @@ class Ur5_Moveit:
 
         rospy.loginfo('\033[94m' + " >>> Init done." + '\033[0m')
 
-<<<<<<< HEAD
-    def cb_exec_sort(self, pkg_to_ship):
-        print("---------")
-        print(pkg_to_ship.pkg_name)
-        global work_done, flag
-        item_color = rospy.get_param(pkg_to_ship.pkg_name)
-=======
     def cb_exec_sort(self, msg):
         
         global work_done, flag
-        item_color = rospy.get_param(msg.pkg_name)
->>>>>>> 3355c43cf274f1fb3e698606877a4f19aaac9b17
+        item_color = rospy.get_param("/pkg_clr/"+msg.pkg_name)
 
         if flag:
             self.conveyor_belt_service_call(100)
-            while len(self.model) == 1 and self.model.type == 'ur5':
+            while len(self.model) == 1 and self.model[0].type == 'ur5':
                 pass
             rospy.sleep(0.5)
             self.conveyor_belt_service_call(0)
@@ -117,7 +109,7 @@ class Ur5_Moveit:
         joint_angles = [0.14648733592875196, -2.38179315608067, -0.7257155148810783, -1.6048803093744644, 1.570796326803042, 0.14648733591716212]
         self.hard_set_joint_angles(joint_angles,3)
         work_done = False
-        thread1 = threading.Thread (target = self.place_pkg,args = (item_color,pkg_to_ship.order_id))
+        thread1 = threading.Thread (target = self.place_pkg,args = (item_color,msg.order_id))
         thread2 = threading.Thread (target = self.control_conveyor_belt, args = (self.model[1].type,))
         thread1.start()
         thread2.start()
