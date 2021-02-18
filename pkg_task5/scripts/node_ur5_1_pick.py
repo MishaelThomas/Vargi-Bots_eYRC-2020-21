@@ -12,17 +12,19 @@ import rospkg
 import yaml
 import sys
 import time
+import datetime
 
 # Service files are required for implementing Vacuum Gripper
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
-from pkg_task5.msg import msgDisOrder
+
+from pkg_task5.msg import msgDispatchAndShip, msgDisOrder
+
 from pkg_ros_iot_bridge.msg import msgIncOrder
 
 # This dictionary is created to store the color of packages as decoded using QR code. It is updated later in main()
 package_data = {}
 
-exec_list = []
-priority_list = []
+exec_list, priority_list = [], []
 
 pkg_count, current, = 0, 0
 
@@ -56,9 +58,11 @@ class Ur5_Moveit:
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
 
-        rospy.Subscriber("incoming_order",msgIncOrder,self.cb_update_exec_dict)
+        rospy.Subscriber("incoming_order_to_ur5_1", msgIncOrder, self.cb_update_exec_dict)
 
-        self.dispatched_order_pub = rospy.Publisher('dispatched_order',msgDisOrder,queue_size=5)
+        self.order_to_ur5_2_pub = rospy.Publisher('dispatched_order_to_ur5_2', msgDisOrder, queue_size = 9)
+        
+        #self.dispatch_spreadsheet_pub = rospy.Publisher("dispatch_ship_info", msgDispatchAndShip, queue_size = 9)
         
         rospy.loginfo(
             '\033[94m' + "Planning Group: {}".format(self._planning_frame) + '\033[0m')
@@ -81,8 +85,8 @@ class Ur5_Moveit:
         
         global package_data, pkg_count, current, exec_list, priority_list
         
-        priority = item_info[msg.item_type][1]
-        pkg = package_data.keys()[package_data.values().index(item_info[msg.item_type][0])]
+        priority = item_info[msg.Item_type][1]
+        pkg = package_data.keys()[package_data.values().index(item_info[msg.Item_type][0])]
         
         del package_data[pkg]
 
@@ -95,9 +99,8 @@ class Ur5_Moveit:
                 break
         
         priority_list.insert(j,priority)
-        exec_list.insert(j,[pkg,msg.order_id])
+        exec_list.insert(j,[pkg,msg.Order_Id])
 
-        print(exec_list)
         pkg_count += 1
         
 
@@ -136,7 +139,7 @@ class Ur5_Moveit:
 
         result = self.gripper_service_call(True)
 
-        if(pkg_to_pick not in ["packagen00","packagen01","packagen02"]):
+        if(pkg_to_pick not in ["packagen00","packagen01","packagen02", "packagen10"]):
             
             rospy.logwarn("1. Playing cp"+m+n+"_place Trajectory File")
             self.moveit_hard_play_planned_path_from_file(self._file_path, 'cp'+m+n+'_place.yaml',3)
@@ -146,8 +149,13 @@ class Ur5_Moveit:
         
         result = self.gripper_service_call(False)
 
-    # Destructor
+    def get_time_str(self):
+        timestamp = int(time.time())
+        value = datetime.datetime.fromtimestamp(timestamp)
+        str_time = value.strftime('%d/%m/%Y %H:%M:%S')
+        return str_time
 
+    # Destructor
     def __del__(self):
         moveit_commander.roscpp_shutdown()
         rospy.loginfo(
@@ -162,7 +170,7 @@ def main():
     
     global package_data, pkg_count, current 
     
-    package_data = rospy.get_param("pkg_clr")
+    package_data = rospy.get_param("pkg_clr"
 
     print(package_data)   
 
@@ -183,8 +191,9 @@ def main():
             dispatch_message.pkg_name = pkg
             dispatch_message.order_id = order_id
         
-            ur5_1.dispatched_order_pub.publish(dispatch_message)
-
+            ur5_1.order_to_ur5_2_pub.publish(dispatch_message)
+            #ur5_1.dispatch_spreadsheet_pub.publish( Order_Id = order_id, Date_and_Time = ur5_1.get_time_str(), task_done = "Dispatched")
+        
     # Removing the object of Ur5Moveit Class
     del ur5_1
 

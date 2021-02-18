@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 from multiprocessing.dummy import Pool
 import time
 import requests
@@ -32,7 +33,8 @@ def mqtt_subscribe_thread_start(arg_callback_func, arg_broker_url, arg_broker_po
         mqtt_client.subscribe(arg_mqtt_topic, arg_mqtt_qos)
         time.sleep(1) # wait
         # mqtt_client.loop_forever() # starts a blocking infinite loop
-        mqtt_client.loop_start()    # starts a new thread
+        mqtt_client.loop_start()
+        # starts a new thread
         return 0
     except:
         return -1
@@ -56,7 +58,10 @@ def mqtt_publish(arg_broker_url, arg_broker_port, arg_mqtt_topic, arg_mqtt_messa
         
 #----------------------------------http reuest------------------------------------------
 # defining our sheet name in the 'id' variable and the the column where we want to update the value
-def spreadsheet_write(URl,**kwargs):
-	URL=URl
-	response = requests.get(URL, params=kwargs)
-	print(response.content)
+def spreadsheet_write(URL,**kwargs):
+    payload=kwargs["payload"]
+    response = requests.get(URL, params=payload)
+    if(response.content=="success"):
+        print("spreadsheet with id"+" "+payload["Id"]+" "+"updated")
+    else:
+        print("request to update sheet ID"+" "+payload["Id"]+"is unsuccessful")

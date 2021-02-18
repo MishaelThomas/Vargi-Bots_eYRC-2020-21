@@ -1,2 +1,2 @@
-string order_id
-string item_type
+string Order_Id
+string Item_type
