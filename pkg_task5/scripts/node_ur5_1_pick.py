@@ -24,11 +24,11 @@ from pkg_task5.msg import dispatch_ship_msg
 package_data = {}
 
 exec_list = []
-id_list = []
+priority_list = []
 
-pkg_count, current,r ,y = 0, 0, 0, 0
+pkg_count, current, = 0, 0
 
-item_info = { "Medicine":"red", "Food":"yellow", "Clothes":"green"}
+item_info = { "Medicine":["red",3], "Food":["yellow",2], "Clothes":["green",1]}
 
 class Ur5_Moveit:
 
@@ -81,6 +81,7 @@ class Ur5_Moveit:
         rospy.loginfo('\033[94m' + " >>> Ur5Moveit init done." + '\033[0m')
 
     def cb_update_exec_dict(self, msg):
+<<<<<<< HEAD
         print("------order_to_pick_recieved-----")
         global package_data, pkg_count, current, exec_list, id_list, r ,y
         pkg = package_data.keys()[package_data.values().index(item_info[msg.Item_type])]
@@ -98,6 +99,26 @@ class Ur5_Moveit:
         elif msg.Item_type == 'Clothes':
             exec_list.append(pkg)
             id_list.append([msg.Order_Id,msg.Item_type])
+=======
+        
+        global package_data, pkg_count, current, exec_list, priority_list
+        
+        priority = item_info[msg.item_type][1]
+        pkg = package_data.keys()[package_data.values().index(item_info[msg.item_type][0])]
+        
+        del package_data[pkg]
+
+        j = current
+
+        for i in range(current,len(priority_list)):
+            if priority_list[i] >= priority:
+                j += 1
+            else:
+                break
+        
+        priority_list.insert(j,priority)
+        exec_list.insert(j,[pkg,msg.order_id])
+>>>>>>> 3355c43cf274f1fb3e698606877a4f19aaac9b17
 
         print(exec_list)
         pkg_count += 1
@@ -129,46 +150,24 @@ class Ur5_Moveit:
     # Function to pick boxes from shelf and place them on conveyer belt. It uses the package attributes to decide
     # which trajectory is to be played
     def pick_place(self,pkg_to_pick):
-        
-        if(pkg_to_pick=="packagen31"):# or pkg_to_pick=="packagen00" or pkg_to_pick=="packagen02" or pkg_to_pick=="packagen32"):
 
+        m = pkg_to_pick[8] # Values of m and n are used ahead to decide the trajectory file to be executed
+        n = pkg_to_pick[9]
+       
+        rospy.logwarn("1. Playing place_to_pkg"+m+n+" Trajectory File")
+        self.moveit_hard_play_planned_path_from_file(self._file_path, 'place_to_pkg'+m+n+'.yaml',3)
+
+        result = self.gripper_service_call(True)
+
+        if(pkg_to_pick not in ["packagen00","packagen01","packagen02"]):
             
-            rospy.logwarn("1. Playing home_to_pkg31 Trajectory File")
-            self.moveit_hard_play_planned_path_from_file(self._file_path, 'home_to_pkg31.yaml',3)
-
-            result = self.gripper_service_call(True)
-            rospy.logwarn("1. Playing cp31_place Trajectory File")
-            self.moveit_hard_play_planned_path_from_file(self._file_path, 'cp31_place.yaml',3)
-
-            rospy.logwarn("1. Playing pkg31_to_place Trajectory File")
-            self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg31_to_place.yaml',3)
-            result = self.gripper_service_call(False)
-
-        elif(pkg_to_pick=="packagen01"):
-
-            rospy.logwarn("1. Playing place_to_pkg01 Trajectory File")
-            self.moveit_hard_play_planned_path_from_file(self._file_path, 'place_to_pkg01.yaml',3)
-
-            result = self.gripper_service_call(True)
-            rospy.logwarn("1. Playing pkg01_to_place Trajectory File")
-            self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg01_to_place.yaml',3)
-            result = self.gripper_service_call(False)
-        
-        else:
-            
-            m = pkg_to_pick[8] # Values of m and n are used ahead to decide the trajectory file to be executed
-            n = pkg_to_pick[9]
-
-            rospy.logwarn("1. Playing place_to_pkg"+m+n+" Trajectory File")
-            self.moveit_hard_play_planned_path_from_file(self._file_path, 'place_to_pkg'+m+n+'.yaml',3)
-
-            result = self.gripper_service_call(True)
             rospy.logwarn("1. Playing cp"+m+n+"_place Trajectory File")
             self.moveit_hard_play_planned_path_from_file(self._file_path, 'cp'+m+n+'_place.yaml',3)
 
-            rospy.logwarn("1. Playing pkg"+m+n+"_to_place Trajectory File")
-            self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg'+m+n+'_to_place.yaml',3)
-            result = self.gripper_service_call(False)
+        rospy.logwarn("1. Playing pkg"+m+n+"_to_place Trajectory File")
+        self.moveit_hard_play_planned_path_from_file(self._file_path, 'pkg'+m+n+'_to_place.yaml',3)
+        
+        result = self.gripper_service_call(False)
 
     def get_time_str(self):
         timestamp = int(time.time())
@@ -189,35 +188,38 @@ def main():
 
     # Creating the object of Ur5_Moveit class
     ur5_1 = Ur5_Moveit()
-
-    global package_data, pkg_count, current ,r ,y
+    
+    global package_data, pkg_count, current 
     
     package_data = rospy.get_param("pkg_clr")
-    print(package_data)
+
+    print(package_data)   
+
+    ur5_1.moveit_hard_play_planned_path_from_file(ur5_1._file_path, 'home_to_place_pose.yaml',3)
     
     while current <= pkg_count and current < 9:
 
         if current != pkg_count:
-            pkg = exec_list[current]
-            order_id = id_list[current][0]
-            if id_list[current][1] == 'Clothes':
-                r+=1
-                y+=1
-            elif id_list[current][1] == 'Food':
-                r+=1
+            pkg = exec_list[current][0]
+            order_id = exec_list[current][1]
 
             current += 1
             
-            rospy.sleep(2.5)
+            ur5_1.pick_place(pkg)
+
             print(str(pkg) + "dispatched")         # Here code regarding pick and place needs to be substituted       
             dispatch_message = msgDisOrder_to_ur5_2()
             dispatch_message.pkg_name = pkg
             dispatch_message.order_id = order_id
         
+<<<<<<< HEAD
             ur5_1.to_ur5_2pub.publish(dispatch_message)
             ur5_1.dispatchOrder_pub.publish(Order_Id=order_id,Date_and_Time= ur5_1.get_time_str(),task_done="Dispatched")
         
             print(dispatch_message)
+=======
+            ur5_1.dispatched_order_pub.publish(dispatch_message)
+>>>>>>> 3355c43cf274f1fb3e698606877a4f19aaac9b17
 
     # Removing the object of Ur5Moveit Class
     del ur5_1

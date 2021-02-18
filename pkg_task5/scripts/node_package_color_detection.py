@@ -25,23 +25,21 @@ def main():
     
     # Enhancing the contrast for a clear image
     #image = cv_image*1.5999999999999998667732370449812151491641998291015625
-    i = 1.5
+    i = 1.4
     qr_result = []
     while i <= 2 and len(qr_result) < 12:
         image = cv_image * i
         qr_result = decode(image)
-        i += 0.05
+        i += 0.005
     # qr_result object contains the decoded data
     
-
-    print(len(qr_result))
 
     # Using the decoded value to identify color of packages
     # Using the for loop, we iterate through each package and update the dicitionary from the attributes of package
     if ( len( qr_result ) > 0):
         for i in range(0, len(qr_result)):
 
-            if qr_result[i].rect.left in range(100,160):
+            if qr_result[i].rect.left in range(70,170):
                 if qr_result[i].rect.top in range(290,360):
                     rospy.set_param('/pkg_clr/packagen00',str(qr_result[i].data))
                 elif qr_result[i].rect.top in range(464,539):
@@ -51,7 +49,7 @@ def main():
                 elif qr_result[i].rect.top in range(755,840):
                     rospy.set_param('/pkg_clr/packagen30',str(qr_result[i].data))
 
-            elif qr_result[i].rect.left in range(290,350):
+            elif qr_result[i].rect.left in range(250,350):
                 if qr_result[i].rect.top in range(290,360):
                     rospy.set_param('/pkg_clr/packagen01',str(qr_result[i].data))
                 elif qr_result[i].rect.top in range(464,539):
@@ -61,7 +59,7 @@ def main():
                 elif qr_result[i].rect.top in range(755,840):
                     rospy.set_param('/pkg_clr/packagen31',str(qr_result[i].data))
 
-            elif qr_result[i].rect.left in range(460,540):
+            elif qr_result[i].rect.left in range(450,550):
                 if qr_result[i].rect.top in range(290,360):
                     rospy.set_param('/pkg_clr/packagen02',str(qr_result[i].data))
                 elif qr_result[i].rect.top in range(464,539):
@@ -71,6 +69,7 @@ def main():
                 elif qr_result[i].rect.top in range(755,840):
                     rospy.set_param('/pkg_clr/packagen32',str(qr_result[i].data))
 
+    print(len(qr_result))
     print(rospy.get_param('pkg_clr'))
     
 if __name__ == '__main__':
