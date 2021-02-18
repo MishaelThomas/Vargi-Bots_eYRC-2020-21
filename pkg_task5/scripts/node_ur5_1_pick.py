@@ -19,14 +19,14 @@ from pkg_task5.msg import msgDisOrder
 from pkg_ros_iot_bridge.msg import msgIncOrder
 
 # This dictionary is created to store the color of packages as decoded using QR code. It is updated later in main()
-package_data = []
+package_data = {}
 
 exec_list = []
-id_list = []
+priority_list = []
 
-pkg_count, current, r ,y = 0, 0, 0, 0
+pkg_count, current, = 0, 0
 
-item_info = { "Medicine":"red", "Food":"yellow", "Clothes":"green"}
+item_info = { "Medicine":["red",3], "Food":["yellow",2], "Clothes":["green",1]}
 
 class Ur5_Moveit:
 
@@ -79,22 +79,23 @@ class Ur5_Moveit:
 
     def cb_update_exec_dict(self, msg):
         
-        global package_data, pkg_count, current, exec_list, id_list, r ,y
-        pkg = package_data.keys()[package_data.values().index(item_info[msg.item_type])]
+        global package_data, pkg_count, current, exec_list, priority_list
+        
+        priority = item_info[msg.item_type][1]
+        pkg = package_data.keys()[package_data.values().index(item_info[msg.item_type][0])]
+        
         del package_data[pkg]
 
-        if msg.item_type == 'Medicine':
-            exec_list.insert(r,pkg)
-            id_list.insert(r,[msg.order_id,msg.item_type])
-            r += 1
-            y += 1
-        elif msg.item_type == 'Food':
-            exec_list.insert(y,pkg)
-            id_list.insert(y,[msg.order_id,msg.item_type])
-            y += 1
-        elif msg.item_type == 'Clothes':
-            exec_list.append(pkg)
-            id_list.append([msg.order_id,msg.item_type])
+        j = current
+
+        for i in range(current,len(priority_list)):
+            if priority_list[i] >= priority:
+                j += 1
+            else:
+                break
+        
+        priority_list.insert(j,priority)
+        exec_list.insert(j,[pkg,msg.order_id])
 
         print(exec_list)
         pkg_count += 1
@@ -159,23 +160,19 @@ def main():
     # Creating the object of Ur5_Moveit class
     ur5_1 = Ur5_Moveit()
     
-    global package_data, pkg_count, current ,r ,y
+    global package_data, pkg_count, current 
     
     package_data = rospy.get_param("pkg_clr")
-    print(package_data)
+
+    print(package_data)   
 
     ur5_1.moveit_hard_play_planned_path_from_file(ur5_1._file_path, 'home_to_place_pose.yaml',3)
     
     while current <= pkg_count and current < 9:
 
         if current != pkg_count:
-            pkg = exec_list[current]
-            order_id = id_list[current][0]
-            if id_list[current][1] == 'Clothes':
-                r+=1
-                y+=1
-            elif id_list[current][1] == 'Food':
-                r+=1
+            pkg = exec_list[current][0]
+            order_id = exec_list[current][1]
 
             current += 1
             
@@ -187,8 +184,6 @@ def main():
             dispatch_message.order_id = order_id
         
             ur5_1.dispatched_order_pub.publish(dispatch_message)
-        
-            print(dispatch_message)
 
     # Removing the object of Ur5Moveit Class
     del ur5_1

@@ -34,8 +34,6 @@ def main():
     # qr_result object contains the decoded data
     
 
-    print(len(qr_result))
-
     # Using the decoded value to identify color of packages
     # Using the for loop, we iterate through each package and update the dicitionary from the attributes of package
     if ( len( qr_result ) > 0):
@@ -71,6 +69,7 @@ def main():
                 elif qr_result[i].rect.top in range(755,840):
                     rospy.set_param('/pkg_clr/packagen32',str(qr_result[i].data))
 
+    print(len(qr_result))
     print(rospy.get_param('pkg_clr'))
     
 if __name__ == '__main__':
