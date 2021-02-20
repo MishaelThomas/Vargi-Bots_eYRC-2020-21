@@ -60,7 +60,7 @@ class Ur5_Moveit:
 
         rospy.Subscriber("incoming_order",msgIncOrder,self.cb_update_exec_dict)
 
-        self.to_ur5_2pub = rospy.Publisher('DispatchedOrder/to_ur5_2',msgDisOrder_to_ur5_2,queue_size=10)
+        self.to_ur5_2pub = rospy.Publisher('DispatchedOrder/to_ur5_2',msgDisOrder,queue_size=10)
         self.dispatchOrder_pub=rospy.Publisher("/dispatching_shipping_info",dispatch_ship_msg,queue_size=10)
         
         rospy.loginfo(
@@ -186,7 +186,7 @@ def main():
             current += 1
             
             ur5_1.pick_place(pkg)
-
+            
             print(str(pkg) + "dispatched")         # Here code regarding pick and place needs to be substituted       
             dispatch_message = msgDisOrder_to_ur5_2()
             dispatch_message.pkg_name = pkg

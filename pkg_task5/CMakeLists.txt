@@ -50,11 +50,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
  add_message_files(
     FILES
-
-    dispatch_ship_msg.msg
-    msgDisOrder_to_ur5_2.msg
-#   Message2.msg
-
+    msgDispatchAndShip.msg
+    msgDisOrder.msg
 
 )
 
