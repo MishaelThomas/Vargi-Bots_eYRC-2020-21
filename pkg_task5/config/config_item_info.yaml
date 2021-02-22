@@ -1,0 +1,24 @@
+item_info:
+  priority:
+    Medicine : "HP"
+    Food : "MP"
+    Clothes : "LP"
+  cost:
+    Medicine : "250"
+    Food : "150"
+    Clothes : "100"
+  delivery_time:
+    Medicine : "1"
+    Food : "3"
+    Clothes : "5"
+  item_pkg_color:
+    Medicine : "Red"
+    Food : "Yellow"
+    Clothes : "Green"
+
+
+
+  
+
+
+

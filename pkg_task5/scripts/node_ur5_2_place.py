@@ -9,6 +9,8 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
+
+
 import yaml
 import threading
 
@@ -73,7 +75,7 @@ class Ur5_Moveit:
         
         rospy.Subscriber("dispatched_order_to_ur5_2", msgDisOrder, self.cb_exec_sort)
 
-        #self.ship_spreadsheet_pub = rospy.Publisher("dispatch_ship_info", msgDispatchAndShip, queue_size=10)
+        self.ship_spreadsheet_pub = rospy.Publisher("dispatch_ship_info", msgDispatchAndShip, queue_size=10)
 
         
         # Creating a handle to use Vacuum Gripper service
@@ -98,7 +100,6 @@ class Ur5_Moveit:
         
         print("start sorting")
         global work_done, flag
-        item_color = rospy.get_param("/pkg_clr/" + msg.pkg_name)
 
         if flag:
             self.conveyor_belt_service_call(100)
@@ -117,7 +118,7 @@ class Ur5_Moveit:
         
         work_done = False
         
-        thread1 = threading.Thread (target = self.place_pkg,args = (item_color,msg.order_id))
+        thread1 = threading.Thread (target = self.place_pkg,args = (msg.pkg_color,msg.order_id))
         thread2 = threading.Thread (target = self.control_conveyor_belt, args = (self.model[1].type,))
         
         thread1.start()
@@ -142,9 +143,10 @@ class Ur5_Moveit:
             file_2_name = 'green_bin_to_initial_pose.yaml'
         
         self.moveit_hard_play_planned_path_from_file(self._file_path, file_1_name ,3)
+        
         self.gripper_service_call(False)
         
-        #self.ship_spreadsheet_pub.publish(Order_Id = order_id, Date_and_Time = self.get_time_str(),task_done = "Shipped")
+        self.ship_spreadsheet_pub.publish(Order_Id = order_id, Date_and_Time = self.get_time_str(),task_done = "Shipped")
         
         self.moveit_hard_play_planned_path_from_file(self._file_path, file_2_name ,3)
         
@@ -209,7 +211,7 @@ class Ur5_Moveit:
         number_attempts = 0
         flag_success = False
 
-        while ( (number_attempts <= arg_max_attempts) and (flag_success is False) ):
+        while ( (number_attempts < arg_max_attempts) and (flag_success is False) ):
             number_attempts += 1
             flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
             rospy.logwarn("attempts: {}".format(number_attempts) )
@@ -246,7 +248,7 @@ class Ur5_Moveit:
             number_attempts = 0
             flag_success = False
             
-            while ( (number_attempts <= arg_max_attempts) and  (flag_success is False) ):
+            while ( (number_attempts < arg_max_attempts) and  (flag_success is False) ):
                 number_attempts += 1
                 flag_success = self.set_joint_angles(arg_list_joint_angles)
                 rospy.logwarn("attempts: {}".format(number_attempts) )

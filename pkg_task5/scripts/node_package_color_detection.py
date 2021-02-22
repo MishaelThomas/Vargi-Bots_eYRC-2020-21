@@ -13,10 +13,11 @@ def main():
     rospy.init_node('node_pkg_color_detection',anonymous = True)
 
     bridge = CvBridge()
-    #rospy.sleep(7)
-    shelf_image = rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None)
+
+    shelf_image = rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image, timeout=None)
     
     print("DECODing")
+
     # Obtaining the image in CV2 format
     try:
         cv_image = bridge.imgmsg_to_cv2(shelf_image, "bgr8")
@@ -33,7 +34,9 @@ def main():
         i += 0.005
     # qr_result object contains the decoded data
     
-
+    print("______________contrast______________")
+    print(i)
+    
     # Using the decoded value to identify color of packages
     # Using the for loop, we iterate through each package and update the dicitionary from the attributes of package
     if ( len( qr_result ) > 0):
