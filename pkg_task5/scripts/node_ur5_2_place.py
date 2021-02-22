@@ -11,12 +11,7 @@ import actionlib
 import rospkg
 #import rospkg
 
-import datetime 
-import time
-from pyiot import iot
-from pkg_ros_iot_bridge.msg import msgMqttSub
-from pkg_task5.msg import msgDispatchAndShip
-from pkg_task5.msg import msgDisOrder
+
 import yaml
 import threading
 
@@ -106,7 +101,7 @@ class Ur5_Moveit:
         
         print("start sorting")
         global work_done, flag
-        item_color = rospy.get_param("/pkg_clr/" + msg.pkg_name)
+        
 
         if flag:
             self.conveyor_belt_service_call(100)
@@ -125,7 +120,7 @@ class Ur5_Moveit:
         
         work_done = False
         
-        thread1 = threading.Thread (target = self.place_pkg,args = (item_color,msg.order_id))
+        thread1 = threading.Thread (target = self.place_pkg,args = (msg.pkg_color,msg.order_id))
         thread2 = threading.Thread (target = self.control_conveyor_belt, args = (self.model[1].type,))
         
         thread1.start()
@@ -152,7 +147,7 @@ class Ur5_Moveit:
         self.moveit_hard_play_planned_path_from_file(self._file_path, file_1_name ,3)
         self.gripper_service_call(False)
         
-        #self.ship_spreadsheet_pub.publish(Order_Id = order_id, Date_and_Time = self.get_time_str(),task_done = "Shipped")
+        self.ship_spreadsheet_pub.publish(Order_Id = order_id, Date_and_Time = self.get_time_str(),task_done = "Shipped")
         
         self.moveit_hard_play_planned_path_from_file(self._file_path, file_2_name ,3)
         

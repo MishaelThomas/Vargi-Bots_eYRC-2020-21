@@ -16,19 +16,22 @@ import datetime
 
 # Service files are required for implementing Vacuum Gripper
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
-from pkg_task5.msg import msgDisOrder_to_ur5_2
+from pkg_task5.msg import msgDisOrder
 from pkg_ros_iot_bridge.msg import msgIncOrder
-from pkg_task5.msg import dispatch_ship_msg
+from pkg_task5.msg import msgDispatchAndShip
 
 # This dictionary is created to store the color of packages as decoded using QR code. It is updated later in main()
 package_data = {}
+deleted_pkg_data={}
 
 exec_list = []
 priority_list = []
 
 pkg_count, current, = 0, 0
 
-item_info = { "Medicine":["red",3], "Food":["yellow",2], "Clothes":["green",1]}
+priority_convert = { "HP":3,"MP":2,"LP":1}
+item_pkg_color=rospy.get_param("/item_info/item_pkg_color/")
+item_priority=rospy.get_param("/item_info/priority/")
 
 class Ur5_Moveit:
 
@@ -60,9 +63,9 @@ class Ur5_Moveit:
 
         rospy.Subscriber("incoming_order",msgIncOrder,self.cb_update_exec_dict)
 
-        self.to_ur5_2pub = rospy.Publisher('DispatchedOrder/to_ur5_2',msgDisOrder,queue_size=10)
-        self.dispatchOrder_pub=rospy.Publisher("/dispatching_shipping_info",dispatch_ship_msg,queue_size=10)
-        
+        self.Disp_ur5_2_pub = rospy.Publisher('dispatched_order_to_ur5_2',msgDisOrder,queue_size=10)
+        self.Disp_spreadsheet_pub=rospy.Publisher("dispatch_ship_info",msgDispatchAndShip,queue_size=10)
+
         rospy.loginfo(
             '\033[94m' + "Planning Group: {}".format(self._planning_frame) + '\033[0m')
         rospy.loginfo(
@@ -82,11 +85,11 @@ class Ur5_Moveit:
 
     def cb_update_exec_dict(self, msg):
         
-        global package_data, pkg_count, current, exec_list, priority_list
+        global package_data, pkg_count, current, exec_list, priority_list,priority_convert,item_pkg_color,item_priority,deleted_pkg_data
         
-        priority = item_info[msg.Item_type][1]
-        pkg = package_data.keys()[package_data.values().index(item_info[msg.Item_type][0])]
-        
+        priority = priority_convert[item_priority[msg.Item_type]]
+        pkg = package_data.keys()[package_data.values().index(item_pkg_color[msg.Item_type].lower())]
+        deleted_pkg_data[pkg]=package_data[pkg]
         del package_data[pkg]
 
         j = current
@@ -169,11 +172,11 @@ def main():
     # Creating the object of Ur5_Moveit class
     ur5_1 = Ur5_Moveit()
     
-    global package_data, pkg_count, current 
+    global package_data, pkg_count, current,deleted_pkg_data 
     
-    package_data = rospy.get_param("pkg_clr")
-
-    print(package_data)   
+    package_data=rospy.get_param("/pkg_clr/")
+    print(package_data)
+    #del package_data["packagen10"] 
 
     ur5_1.moveit_hard_play_planned_path_from_file(ur5_1._file_path, 'home_to_place_pose.yaml',3)
     
@@ -181,6 +184,8 @@ def main():
 
         if current != pkg_count:
             pkg = exec_list[current][0]
+            pkg_color=deleted_pkg_data[pkg]
+            del deleted_pkg_data[pkg]
             order_id = exec_list[current][1]
 
             current += 1
@@ -188,12 +193,12 @@ def main():
             ur5_1.pick_place(pkg)
             
             print(str(pkg) + "dispatched")         # Here code regarding pick and place needs to be substituted       
-            dispatch_message = msgDisOrder_to_ur5_2()
-            dispatch_message.pkg_name = pkg
+            ur5_1.Disp_spreadsheet_pub.publish(Order_Id=order_id,Date_and_Time= ur5_1.get_time_str(),task_done="Dispatched")
+
+            dispatch_message = msgDisOrder()
+            dispatch_message.pkg_color = pkg_color
             dispatch_message.order_id = order_id
-        
-            ur5_1.to_ur5_2pub.publish(dispatch_message)
-            ur5_1.dispatchOrder_pub.publish(Order_Id=order_id,Date_and_Time= ur5_1.get_time_str(),task_done="Dispatched")
+            ur5_1.Disp_ur5_2_pub.publish(dispatch_message)
         
             print(dispatch_message)
 

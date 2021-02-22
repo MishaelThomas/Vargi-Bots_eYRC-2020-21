@@ -33,7 +33,8 @@ def main():
         i += 0.005
     # qr_result object contains the decoded data
     
-
+    print("______________contrast______________")
+    print(i)
     # Using the decoded value to identify color of packages
     # Using the for loop, we iterate through each package and update the dicitionary from the attributes of package
     if ( len( qr_result ) > 0):
