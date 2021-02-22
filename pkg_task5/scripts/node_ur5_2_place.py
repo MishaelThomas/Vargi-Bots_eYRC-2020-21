@@ -9,7 +9,6 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import actionlib
 import rospkg
-#import rospkg
 
 
 import yaml
@@ -101,7 +100,6 @@ class Ur5_Moveit:
         
         print("start sorting")
         global work_done, flag
-        
 
         if flag:
             self.conveyor_belt_service_call(100)
@@ -145,6 +143,7 @@ class Ur5_Moveit:
             file_2_name = 'green_bin_to_initial_pose.yaml'
         
         self.moveit_hard_play_planned_path_from_file(self._file_path, file_1_name ,3)
+        
         self.gripper_service_call(False)
         
         self.ship_spreadsheet_pub.publish(Order_Id = order_id, Date_and_Time = self.get_time_str(),task_done = "Shipped")
@@ -212,7 +211,7 @@ class Ur5_Moveit:
         number_attempts = 0
         flag_success = False
 
-        while ( (number_attempts <= arg_max_attempts) and (flag_success is False) ):
+        while ( (number_attempts < arg_max_attempts) and (flag_success is False) ):
             number_attempts += 1
             flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
             rospy.logwarn("attempts: {}".format(number_attempts) )
@@ -249,7 +248,7 @@ class Ur5_Moveit:
             number_attempts = 0
             flag_success = False
             
-            while ( (number_attempts <= arg_max_attempts) and  (flag_success is False) ):
+            while ( (number_attempts < arg_max_attempts) and  (flag_success is False) ):
                 number_attempts += 1
                 flag_success = self.set_joint_angles(arg_list_joint_angles)
                 rospy.logwarn("attempts: {}".format(number_attempts) )

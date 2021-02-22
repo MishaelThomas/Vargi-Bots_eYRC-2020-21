@@ -16,7 +16,7 @@ import datetime
 
 # Service files are required for implementing Vacuum Gripper
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
-from pkg_task5.msg import msgDisOrder
+from pkg_task5.msg import msgDisOrder, msgDispatchAndShip
 from pkg_ros_iot_bridge.msg import msgIncOrder
 from pkg_task5.msg import msgDispatchAndShip
 
@@ -30,8 +30,8 @@ priority_list = []
 pkg_count, current, = 0, 0
 
 priority_convert = { "HP":3,"MP":2,"LP":1}
-item_pkg_color=rospy.get_param("/item_info/item_pkg_color/")
-item_priority=rospy.get_param("/item_info/priority/")
+item_pkg_color = rospy.get_param("/item_info/item_pkg_color/")
+item_priority = rospy.get_param("/item_info/priority/")
 
 class Ur5_Moveit:
 
@@ -85,11 +85,11 @@ class Ur5_Moveit:
 
     def cb_update_exec_dict(self, msg):
         
-        global package_data, pkg_count, current, exec_list, priority_list,priority_convert,item_pkg_color,item_priority,deleted_pkg_data
+        global package_data, pkg_count, current, exec_list, priority_list, priority_convert, item_pkg_color, item_priority, deleted_pkg_data
         
         priority = priority_convert[item_priority[msg.Item_type]]
         pkg = package_data.keys()[package_data.values().index(item_pkg_color[msg.Item_type].lower())]
-        deleted_pkg_data[pkg]=package_data[pkg]
+        deleted_pkg_data[pkg] = package_data[pkg]
         del package_data[pkg]
 
         j = current
@@ -109,26 +109,26 @@ class Ur5_Moveit:
 
     # Function to execute a saved trajectory
     def moveit_play_planned_path_from_file(self, arg_file_path, arg_file_name):
-		file_path = arg_file_path + arg_file_name
-		
-		with open(file_path, 'r') as file_open:
-			loaded_plan = yaml.load(file_open)
-		
-		ret = self._group.execute(loaded_plan) # Execution of trajectory file
+        file_path = arg_file_path + arg_file_name
+        
+        with open(file_path, 'r') as file_open:
+            loaded_plan = yaml.load(file_open)
+        
+        ret = self._group.execute(loaded_plan) # Execution of trajectory file
 
-		return ret
+        return ret
     
     # Function to confirm the execution of saved trajectories in few attempts
     def moveit_hard_play_planned_path_from_file(self, arg_file_path, arg_file_name, arg_max_attempts):
-		number_attempts = 0
-		flag_success = False
+        number_attempts = 0
+        flag_success = False
 
-		while ( (number_attempts <= arg_max_attempts) and (flag_success is False) ):
-			number_attempts += 1
-			flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
-			rospy.logwarn("attempts: {}".format(number_attempts) )
-		
-		return True
+        while ( (number_attempts < arg_max_attempts) and (flag_success is False) ):
+            number_attempts += 1
+            flag_success = self.moveit_play_planned_path_from_file(arg_file_path, arg_file_name)
+            rospy.logwarn("attempts: {}".format(number_attempts) )
+        
+        return True
 
     # Function to pick boxes from shelf and place them on conveyer belt. It uses the package attributes to decide
     # which trajectory is to be played
@@ -142,7 +142,7 @@ class Ur5_Moveit:
 
         result = self.gripper_service_call(True)
 
-        if(pkg_to_pick not in ["packagen00","packagen01","packagen02"]):
+        if(pkg_to_pick in ["packagen20", "packagen22", "packagen30", "packagen31", "packagen32"]):
             
             rospy.logwarn("1. Playing cp"+m+n+"_place Trajectory File")
             self.moveit_hard_play_planned_path_from_file(self._file_path, 'cp'+m+n+'_place.yaml',3)
@@ -174,9 +174,13 @@ def main():
     
     global package_data, pkg_count, current,deleted_pkg_data 
     
-    package_data=rospy.get_param("/pkg_clr/")
+    pkg_data = rospy.get_param("/pkg_clr/")
+    for i in range(0,4):
+        for j in range(0,3):
+            temp_pkg = 'packagen'+str(i)+str(j)
+            package_data[temp_pkg] = pkg_data[temp_pkg]
+
     print(package_data)
-    #del package_data["packagen10"] 
 
     ur5_1.moveit_hard_play_planned_path_from_file(ur5_1._file_path, 'home_to_place_pose.yaml',3)
     
@@ -184,15 +188,15 @@ def main():
 
         if current != pkg_count:
             pkg = exec_list[current][0]
-            pkg_color=deleted_pkg_data[pkg]
+            pkg_color = deleted_pkg_data[pkg]
             del deleted_pkg_data[pkg]
             order_id = exec_list[current][1]
 
             current += 1
             
             ur5_1.pick_place(pkg)
-            
             print(str(pkg) + "dispatched")         # Here code regarding pick and place needs to be substituted       
+            
             ur5_1.Disp_spreadsheet_pub.publish(Order_Id=order_id,Date_and_Time= ur5_1.get_time_str(),task_done="Dispatched")
 
             dispatch_message = msgDisOrder()
