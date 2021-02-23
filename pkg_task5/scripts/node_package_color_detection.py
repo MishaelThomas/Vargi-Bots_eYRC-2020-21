@@ -18,9 +18,8 @@ def main():
     
     print("DECODing")
 
-    # Obtaining the image in CV2 format
     try:
-        cv_image = bridge.imgmsg_to_cv2(shelf_image, "bgr8")
+        cv_image = bridge.imgmsg_to_cv2(shelf_image, "rgb8")
     except CvBridgeError as e:
         rospy.logerr(e)
     
