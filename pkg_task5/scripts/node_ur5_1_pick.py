@@ -13,6 +13,7 @@ import yaml
 import sys
 import time
 import datetime
+from collections import OrderedDict as od
 
 # Service files are required for implementing Vacuum Gripper
 from pkg_vb_sim.srv import vacuumGripper, vacuumGripperRequest, vacuumGripperResponse
@@ -21,8 +22,7 @@ from pkg_ros_iot_bridge.msg import msgIncOrder
 from pkg_task5.msg import msgDispatchAndShip
 
 # This dictionary is created to store the color of packages as decoded using QR code. It is updated later in main()
-package_data = {}
-deleted_pkg_data={}
+package_data = od()
 
 exec_list = []
 priority_list = []
@@ -61,7 +61,7 @@ class Ur5_Moveit:
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
 
-        rospy.Subscriber("incoming_order",msgIncOrder,self.cb_update_exec_dict)
+        rospy.Subscriber("order_to_ur5_1",msgIncOrder,self.cb_update_exec_dict)
 
         self.Disp_ur5_2_pub = rospy.Publisher('dispatched_order_to_ur5_2',msgDisOrder,queue_size=10)
         self.Disp_spreadsheet_pub=rospy.Publisher("dispatch_ship_info",msgDispatchAndShip,queue_size=10)
@@ -85,11 +85,10 @@ class Ur5_Moveit:
 
     def cb_update_exec_dict(self, msg):
         
-        global package_data, pkg_count, current, exec_list, priority_list, priority_convert, item_pkg_color, item_priority, deleted_pkg_data
+        global package_data, pkg_count, current, exec_list, priority_list, priority_convert, item_pkg_color, item_priority
         
         priority = priority_convert[item_priority[msg.Item_type]]
         pkg = package_data.keys()[package_data.values().index(item_pkg_color[msg.Item_type].lower())]
-        deleted_pkg_data[pkg] = package_data[pkg]
         del package_data[pkg]
 
         j = current
@@ -172,24 +171,20 @@ def main():
     # Creating the object of Ur5_Moveit class
     ur5_1 = Ur5_Moveit()
     
-    global package_data, pkg_count, current,deleted_pkg_data 
-    
-    pkg_data = rospy.get_param("/pkg_clr/")
-    for i in range(0,4):
-        for j in range(0,3):
-            temp_pkg = 'packagen'+str(i)+str(j)
-            package_data[temp_pkg] = pkg_data[temp_pkg]
+    global package_data, pkg_count, current 
 
+    '''pkg_data = rospy.get_param("/pkg_clr/")
+    print(pkg_data)'''
+
+    package_data = od(sorted(rospy.get_param("/pkg_clr/").items()))
     print(package_data)
 
     ur5_1.moveit_hard_play_planned_path_from_file(ur5_1._file_path, 'home_to_place_pose.yaml',3)
     
-    while current <= pkg_count and current < 9:
+    while current < 9:
 
         if current != pkg_count:
             pkg = exec_list[current][0]
-            pkg_color = deleted_pkg_data[pkg]
-            del deleted_pkg_data[pkg]
             order_id = exec_list[current][1]
 
             current += 1
@@ -200,7 +195,7 @@ def main():
             ur5_1.Disp_spreadsheet_pub.publish(Order_Id=order_id,Date_and_Time= ur5_1.get_time_str(),task_done="Dispatched")
 
             dispatch_message = msgDisOrder()
-            dispatch_message.pkg_color = pkg_color
+            dispatch_message.pkg_name = pkg
             dispatch_message.order_id = order_id
             ur5_1.Disp_ur5_2_pub.publish(dispatch_message)
         

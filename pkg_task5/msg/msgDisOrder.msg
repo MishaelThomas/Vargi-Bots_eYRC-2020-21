@@ -1,3 +1,3 @@
-string pkg_color
+string pkg_name
 string order_id
 

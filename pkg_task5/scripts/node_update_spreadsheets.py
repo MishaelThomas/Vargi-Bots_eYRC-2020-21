@@ -1,17 +1,21 @@
 #!/usr/bin/env python
 import rospy
 from collections import OrderedDict as od
-from datetime import datetime,timedelta,date
+from datetime import datetime, timedelta, date
 from threading import Thread
 
 from pyiot import iot
 from pkg_ros_iot_bridge.msg import msgMqttSub, msgIncOrder
 from pkg_task5.msg import msgDispatchAndShip
 
+<<<<<<< HEAD
 
 item_data=rospy.get_param("/item_info/")
+=======
+item_data = rospy.get_param("/item_info/")
+>>>>>>> 042230ae391d1793c2e27974c40b163aa5d81fc7
 
-URL= "https://script.google.com/macros/s/AKfycbx8MaUzOnAjYPUw2zmVLqMjHoFyk9s6PTeuVijQ7O4kghb1rTD-VF3UPw/exec"
+URL = "https://script.google.com/macros/s/AKfycbx8MaUzOnAjYPUw2zmVLqMjHoFyk9s6PTeuVijQ7O4kghb1rTD-VF3UPw/exec"
 
 class update_spreadheets:
 
@@ -21,11 +25,13 @@ class update_spreadheets:
         
         """
         rospy.init_node("node_update_spreadsheets")
-        self.all_orders={}
+        self.all_orders = {}
+        
         rospy.Subscriber("/ros_iot_bridge/mqtt/sub", msgMqttSub, self.incoming_orders, queue_size = 5)
         rospy.Subscriber("dispatch_ship_info", msgDispatchAndShip, self.dispatched_and_shipped_sheet, queue_size=5)
 
     def incoming_orders_sheet(self,order):
+        
         global item_data
         global URL
         
@@ -99,35 +105,40 @@ class update_spreadheets:
         
 
 def update_inventory_sheet():
+    
     global item_data
     global URL
-    package_data=rospy.get_param("/pkg_clr/")
+    
+    package_data = rospy.get_param("/pkg_clr/")
     print(package_data)
-    sort_data=od(sorted(package_data.items()))
+    
+    sort_data = od(sorted(package_data.items()))
     print(sort_data)
-    today=date.today().strftime("%d/%m%Y")
+    
+    today = date.today().strftime("%d/%m%Y")
+    
     for key,value in sort_data.items():
-        pkg_name=key
-        pkg_color=value.capitalize()
-        storage_number=pkg_name[8:]
-        SKU=pkg_color[0]+storage_number+today[3:]
-        storage_pos="R"+storage_number[0]+"C"+storage_number[1]
-        item=[k for k in item_data["item_pkg_color"].keys() if item_data["item_pkg_color"][k]==pkg_color][0]
-        parameters={
-                    "Id":"Inventory",
-                    "Team Id":"VB#1194",
-                    "Unique Id":"PaThJaPa",
-                    "SKU":SKU,
-                    "Storage Number":storage_pos,
-                    "Cost":item_data["cost"][item],
-                    "Qunatity":"1",
-                    "Priority":item_data["priority"][item],
-                    "Item":item
+        
+        pkg_name = key
+        pkg_color = value.capitalize()
+        storage_number = pkg_name[8:]
+        SKU = pkg_color[0] + storage_number + today[3:]
+        storage_pos = "R" + storage_number[0] + "C" + storage_number[1]
+        item = [k for k in item_data["item_pkg_color"].keys() if item_data["item_pkg_color"][k] == pkg_color][0]
+        
+        parameters = {
+                        "Id":"Inventory",
+                        "Team Id":"VB#1194",
+                        "Unique Id":"PaThJaPa",
+                        "SKU":SKU,
+                        "Storage Number":storage_pos,
+                        "Cost":item_data["cost"][item],
+                        "Qunatity":"1",
+                        "Priority":item_data["priority"][item],
+                        "Item":item
                     }
         iot.spreadsheet_write(URL,payload=parameters)
         
-
-
 
 def main():
     update_spreadheets()
@@ -135,6 +146,6 @@ def main():
    
 
 if __name__=="__main__":
-    invensheet_thread=Thread(target=update_inventory_sheet,args=())
+    invensheet_thread = Thread(target=update_inventory_sheet,args=())
     invensheet_thread.start()
     main()
