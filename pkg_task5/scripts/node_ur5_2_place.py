@@ -100,6 +100,7 @@ class Ur5_Moveit:
         
         print("start sorting")
         global work_done, flag
+        pkg_color = rospy.get_param('pkg_clr/'+str(msg.pkg_name))
 
         if flag:
             self.conveyor_belt_service_call(100)
@@ -118,7 +119,7 @@ class Ur5_Moveit:
         
         work_done = False
         
-        thread1 = threading.Thread (target = self.place_pkg,args = (msg.pkg_color,msg.order_id))
+        thread1 = threading.Thread (target = self.place_pkg,args = (pkg_color,msg.order_id))
         thread2 = threading.Thread (target = self.control_conveyor_belt, args = (self.model[1].type,))
         
         thread1.start()

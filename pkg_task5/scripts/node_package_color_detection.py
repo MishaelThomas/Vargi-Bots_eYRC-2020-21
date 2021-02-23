@@ -43,33 +43,33 @@ def main():
         for i in range(0, len(qr_result)):
 
             if qr_result[i].rect.left in range(70,170):
-                if qr_result[i].rect.top in range(290,360):
+                if qr_result[i].rect.top in range(280,360):
                     rospy.set_param('/pkg_clr/packagen00',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(464,539):
+                elif qr_result[i].rect.top in range(450,540):
                     rospy.set_param('/pkg_clr/packagen10',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(600,685):
+                elif qr_result[i].rect.top in range(600,690):
                     rospy.set_param('/pkg_clr/packagen20',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(755,840):
+                elif qr_result[i].rect.top in range(750,850):
                     rospy.set_param('/pkg_clr/packagen30',str(qr_result[i].data))
 
             elif qr_result[i].rect.left in range(250,350):
-                if qr_result[i].rect.top in range(290,360):
+                if qr_result[i].rect.top in range(280,360):
                     rospy.set_param('/pkg_clr/packagen01',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(464,539):
+                elif qr_result[i].rect.top in range(450,540):
                     rospy.set_param('/pkg_clr/packagen11',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(600,685):
+                elif qr_result[i].rect.top in range(600,690):
                     rospy.set_param('/pkg_clr/packagen21',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(755,840):
+                elif qr_result[i].rect.top in range(750,850):
                     rospy.set_param('/pkg_clr/packagen31',str(qr_result[i].data))
 
             elif qr_result[i].rect.left in range(450,550):
-                if qr_result[i].rect.top in range(290,360):
+                if qr_result[i].rect.top in range(280,360):
                     rospy.set_param('/pkg_clr/packagen02',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(464,539):
+                elif qr_result[i].rect.top in range(450,540):
                     rospy.set_param('/pkg_clr/packagen12',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(600,685):
+                elif qr_result[i].rect.top in range(600,690):
                     rospy.set_param('/pkg_clr/packagen22',str(qr_result[i].data))
-                elif qr_result[i].rect.top in range(755,840):
+                elif qr_result[i].rect.top in range(750,850):
                     rospy.set_param('/pkg_clr/packagen32',str(qr_result[i].data))
 
     print(len(qr_result))
