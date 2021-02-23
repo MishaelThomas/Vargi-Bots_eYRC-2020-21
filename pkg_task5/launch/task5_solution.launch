@@ -10,18 +10,10 @@
 
 	<include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />
 	
-<<<<<<< HEAD
-	<arg name="node_start_delay_1" default="20.0" />
-	<arg name="node_start_delay_2" default="0.0" />
-	<arg name="node_start_delay_3" default="80.0" />
-    <arg name="node_start_delay_4" default="120.0" />
-    <arg name="node_start_delay_5" default="60.0" />
-=======
 	<arg name="node_start_delay_1" default="30.0" />
 	<arg name="node_start_delay_2" default="70.0" />
 	<arg name="node_start_delay_3" default="100.0" />
 	<arg name="node_start_delay_4" default="120.0" />
->>>>>>> 042230ae391d1793c2e27974c40b163aa5d81fc7
     
 
 	
