@@ -1,4 +1,5 @@
-# Config file for colour of the packages
+# Config file for updating colour of the packages
+
 pkg_clr:
   packagen00: ""
   packagen01: ""

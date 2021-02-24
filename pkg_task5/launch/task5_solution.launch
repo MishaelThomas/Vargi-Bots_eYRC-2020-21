@@ -27,15 +27,15 @@
     <node name= "node_ros_iot_bridge" pkg="pkg_ros_iot_bridge" type="node_ros_iot_bridge.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_1); $0 $@' " />     
     
     <rosparam file="$(find pkg_task5 )/config/config_pkg_color.yaml"/>
-    <node name= "node_pkg_color_detection" pkg="pkg_task5" type="node_package_color_detection.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@'" />     
+    <node name= "node_package_color_detector" pkg="pkg_task5" type="node_package_color_detector.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@'" />     
     
     <!-- Run Conveyor Belt Service Server -->
     <node name= "node_service_server_conveyor_belt" pkg= "pkg_vb_sim" type="node_service_server_conveyor_belt.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3); $0 $@'" />   
     
     
-     <node name="node_ur5_2_place" pkg="pkg_task5" type="node_ur5_2_place.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3);  $0 $@'" /> 
+     <node name="node_control_ur5_2_and_belt" pkg="pkg_task5" type="node_control_ur5_2_and_belt.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3);  $0 $@'" /> 
 	
-	<node name="node_ur5_1_pick" pkg="pkg_task5" type="node_ur5_1_pick.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3);  $0 $@'" />
+	<node name="node_control_ur5_1" pkg="pkg_task5" type="node_control_ur5_1.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3);  $0 $@'" />
     
 
     <!-- Run the Online Order Placer Node -->

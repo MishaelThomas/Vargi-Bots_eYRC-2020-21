@@ -10,4 +10,4 @@ config_pyiot:
 
     sub_cb_ros_topic: "/ros_iot_bridge/mqtt/sub"   # ROS nodes can listen to this top
   google_apps:      
-    spread_sheet_id: "AKfycbzD781eAdvrIAgsg9Nt611672NrvuNJE05W2p5YR86HjC91JRI"
+    spreadsheet_id: "AKfycbzD781eAdvrIAgsg9Nt611672NrvuNJE05W2p5YR86HjC91JRI"
