@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 '''
     This python file is reponsible for directing ur5_1 arm so as to pick desired packages
     from the shelf and drop them on the conveyor belt.
@@ -13,7 +14,6 @@
     node_update_spreadsheets can update the information on Orders Dispatched Spreadsheet using
     IoT.
 '''
-#! /usr/bin/env python
 
 # Importing necessary modules for using ROS, Moveit Motion Planning framework.
 
@@ -225,7 +225,7 @@ class Ur51Moveit:
         self.gripper_service_call(True)   # Picking the package
 
         # Extra trajectory file is required for some packages
-        if(pkg_to_pick in ["packagen20", "packagen22", "packagen30", "packagen31", "packagen32"]):
+        if(pkg_to_pick in ["packagen20", "packagen22", "packagen30", "packagen31", "packagen32","packagen21"]):
 
             rospy.logwarn("1. Playing cp"+row+col+"_place Trajectory File")
             self.moveit_hard_play_planned_path_from_file(self.file_path,

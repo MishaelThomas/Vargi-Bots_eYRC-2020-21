@@ -1,3 +1,6 @@
+#! /usr/bin/env python
+
+
 '''
     This python file is reponsible for updating the spreadsheets which consists of Inventory,
     Incoming order, Orders Dispatched and Orders Shipped .
@@ -9,7 +12,7 @@
     are also updated.
 '''
 
-#!/usr/bin/env python
+
 
 from collections import OrderedDict as od
 from datetime import datetime,timedelta,date
@@ -30,7 +33,7 @@ from pyiot import iot
 ITEMDATA = rospy.get_param("/item_info/")
 
 # URL of the sheet over which data is to be written
-URL = rospy.get_param("config_pyiot/google_apps/spreadsheet_id")
+URL = "https://script.google.com/macros/s/"+rospy.get_param("config_pyiot/google_apps/spreadsheet_id")+"/exec"
 
 class UpdateSpreadheets:
     '''

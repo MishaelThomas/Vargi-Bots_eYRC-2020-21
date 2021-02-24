@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 '''
     This python file is reponsible for directing ur5_2 arm so as to pick incoming packages
     from the conveyor belt and dropping them on their respective bins after sorting.
@@ -11,7 +13,7 @@
     node_update_spreadsheets by publishing on ROS message: msgDispathAndShip so that it
     updates the information on Dispatched Orders Spreadsheet using IoT.
 '''
-#! /usr/bin/env python
+
 
 # Following messages are used to convey current status of the order:
 # msgDispatchOrder: to obtain information about dispatched packages
@@ -293,6 +295,7 @@ class Ur52Moveit:
 
         global WORK_DONE
         self.conveyor_belt_service_call(100)
+        a=-1
 
         # Storing the data of logical_camera_2 for further processing in the while loop
         log_cam_feed = self.model
@@ -312,18 +315,23 @@ class Ur52Moveit:
                 if log_cam_feed[0].type == "ur5" or log_cam_feed[0].type == pkg_picked:
                     pass
                 else:
+                    a=0
                     break
             elif len(log_cam_feed) == 2:
                 if log_cam_feed[1].type == "ur5" or log_cam_feed[1].type == pkg_picked:
                     pass
                 else:
+                    a=1
                     break
 
             log_cam_feed = self.model
-
+        not_reached=True
         # Stopping the new package at the desired position
-        while self.model[1].pose.position.y > 0.0001:
-            pass
+        while (not_reached):
+            for model in self.model:
+                if(model.pose.position.y<=0.0001 and model.type!="ur5"):
+                    not_reached=False
+            
 
         self.conveyor_belt_service_call(0)
 

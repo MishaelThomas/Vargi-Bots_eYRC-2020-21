@@ -10,10 +10,10 @@
 
 	<include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />
 	
-	<arg name="node_start_delay_1" default="20.0" />
-	<arg name="node_start_delay_2" default="20.0" />
-	<arg name="node_start_delay_3" default="40.0"/>
-	<arg name="node_start_delay_4" default="40.0" />
+	<arg name="node_start_delay_1" default="120.0" />
+	<arg name="node_start_delay_2" default="120.0" />
+	<arg name="node_start_delay_3" default="160.0"/>
+	<arg name="node_start_delay_4" default="160.0" />
     
 
 	
@@ -44,5 +44,13 @@
     
     <node name="node_update_spreadsheets" pkg="pkg_task5" type="node_update_spreadsheets.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_4);  $0 $@'" />  
     
+    <!-- Recording Bag File for Submission -->
+    <arg name="record" default="false"/>
+    <arg name="rec_name" default="t5.bag"/>
+
+    <group if="$(arg record)">
+        <node name="rosbag_record_pick" pkg="rosbag" type="record"
+       args="record -O $(find pkg_task5)/bag_files/$(arg rec_name) --chunksize=10 /eyrc/vb/ur5_1/vacuum_gripper/logical_camera/ur5_1 /eyrc/vb/ur5_2/vacuum_gripper/logical_camera/ur5_2" output="screen"/>
+ </group>
      
 </launch>
