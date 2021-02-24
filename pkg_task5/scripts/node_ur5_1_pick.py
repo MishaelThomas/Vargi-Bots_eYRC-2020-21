@@ -61,7 +61,7 @@ class Ur5_Moveit:
         rospy.wait_for_service('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1')
         self.gripper_service_call = rospy.ServiceProxy('/eyrc/vb/ur5/activate_vacuum_gripper/ur5_1', vacuumGripper)
 
-        rospy.Subscriber("order_to_ur5_1",msgIncOrder,self.cb_update_exec_dict)
+        rospy.Subscriber("incoming_order",msgIncOrder,self.cb_update_exec_dict)
 
         self.Disp_ur5_2_pub = rospy.Publisher('dispatched_order_to_ur5_2',msgDisOrder,queue_size=10)
         self.Disp_spreadsheet_pub=rospy.Publisher("dispatch_ship_info",msgDispatchAndShip,queue_size=10)
@@ -84,13 +84,13 @@ class Ur5_Moveit:
         rospy.loginfo('\033[94m' + " >>> Ur5Moveit init done." + '\033[0m')
 
     def cb_update_exec_dict(self, msg):
+        print("_____________dispatch_message_recieved______")
         
         global package_data, pkg_count, current, exec_list, priority_list, priority_convert, item_pkg_color, item_priority
         
         priority = priority_convert[item_priority[msg.Item_type]]
         pkg = package_data.keys()[package_data.values().index(item_pkg_color[msg.Item_type].lower())]
         del package_data[pkg]
-
         j = current
 
         for i in range(current,len(priority_list)):
@@ -173,8 +173,7 @@ def main():
     
     global package_data, pkg_count, current 
 
-    '''pkg_data = rospy.get_param("/pkg_clr/")
-    print(pkg_data)'''
+    
 
     package_data = od(sorted(rospy.get_param("/pkg_clr/").items()))
     print(package_data)
@@ -199,7 +198,7 @@ def main():
             dispatch_message.order_id = order_id
             ur5_1.Disp_ur5_2_pub.publish(dispatch_message)
         
-            print(dispatch_message)
+            print("dispatched_message")
 
     # Removing the object of Ur5Moveit Class
     del ur5_1

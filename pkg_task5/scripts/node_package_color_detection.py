@@ -110,13 +110,13 @@ def detect_pkgs_color(shelf_image):
     pkg_colors=("red","green","yellow")
     bridge = CvBridge()
     try:
-      image = bridge.imgmsg_to_cv2(shelf_image, "bgr8")
+      image = bridge.imgmsg_to_cv2(shelf_image, "bgr8") #Converting image to "BGR" format
     except CvBridgeError as e:
       rospy.logerr(e)
     
-    resized_image=cv2.resize(image, (720/2, 1280/2))
+    resized_image=cv2.resize(image, (720/2, 1280/2)) #Resizing Image
 
-    hsv_image=cv2.cvtColor(resized_image,cv2.COLOR_BGR2HSV) #Converting BGR format image to HSV format image
+    hsv_image=cv2.cvtColor(resized_image,cv2.COLOR_BGR2HSV) #Converting BGR format image to HSV format image 
     #A For LOOP to detect all the packages of all colours present in pkg_colors
     for clr in pkg_colors:
         detect_pkgs_of_clr(resized_image,hsv_image,clr) #Calling detect_pkgs_of_clr() to detect packages of a particular colour 

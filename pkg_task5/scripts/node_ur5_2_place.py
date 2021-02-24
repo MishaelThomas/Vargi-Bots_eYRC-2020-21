@@ -97,7 +97,7 @@ class Ur5_Moveit:
         rospy.loginfo('\033[94m' + " >>> Init done." + '\033[0m')
 
     def cb_exec_sort(self, msg):
-        
+        print("________to_ship_mess_recived_____")
         print("start sorting")
         global work_done, flag
         pkg_color = rospy.get_param('pkg_clr/'+str(msg.pkg_name))
@@ -112,8 +112,8 @@ class Ur5_Moveit:
             flag = False
         
         print('going for pick')
+        print(self.model)
         self.pick_pkg(self.model[1].pose)
-        
         joint_angles = [0.14648733592875196, -2.38179315608067, -0.7257155148810783, -1.6048803093744644, 1.570796326803042, 0.14648733591716212]
         self.hard_set_joint_angles(joint_angles,3)
         
@@ -162,7 +162,7 @@ class Ur5_Moveit:
         print('starting threading')
 
         log_cam_feed = self.model
-        
+        a=-1
         while len(log_cam_feed) <= 2:
             
             if len(log_cam_feed) == 0:
@@ -171,17 +171,19 @@ class Ur5_Moveit:
                 if log_cam_feed[0].type == "ur5" or log_cam_feed[0].type == pkg_picked:
                     pass 
                 else:
+                    a=0
                     break
             elif len(log_cam_feed) == 2:
                 if log_cam_feed[1].type == "ur5" or log_cam_feed[1].type == pkg_picked:
                     pass 
                 else:
+                    a=1
                     break
             
             log_cam_feed = self.model
         
         print('pkg found')
-        while self.model[1].pose.position.y > 0.0001:
+        while self.model[a].pose.position.y > 0.0001:
             pass
         
         self.conveyor_belt_service_call(0)
@@ -229,7 +231,7 @@ class Ur5_Moveit:
         self._group.set_pose_target(arg_pose)
         
         # Confirming that go_to_pose is executed
-        while attempts < 3 and (not flag_plan):
+        while attempts < 4 and (not flag_plan):
             flag_plan = self._group.go(wait=True)  # wait=False for Async Move
             attempts += 1
 
