@@ -1,22 +1,29 @@
+'''
+This python file is responsible for carrying out activities related to computer vision.
+
+node_package_color_detector.py sets up the ROS node: node_pkg_color_detector.
+It identifies he color of the packages and updates the parameter 'pkg_clr' on the server.
+It uses OpenCV modules for executing computer vision related tasks.
+'''
+
 #! /usr/bin/env python
 
+# Importing the required modules for activities related to ROS and Computer Vision
 import rospy
-
-# Importing modules required for performing functions related to computer vision and QR decoding
 import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from pyzbar.pyzbar import decode
 import numpy as np
 
-def detect_pkgs_of_clr(image,hsv_image,pkg_color):
-    ''' A function to detect  all the packages of a particular colour.
-
+def detect_pkgs_of_clr(image, hsv_image, pkg_color):
+    ''' 
+        A function to detect  all the packages of a particular colour.
+        
         Paramter:
                 image: Image in "bgr8" format.
                 hsv_image: Image in HSV format.
                 pkg_color: Colour of the package to be detected. 
-
+        
         Return : A list containing bounding box coordinates of all the detected packages of a particular colour.
     '''
 
@@ -58,10 +65,11 @@ def identify_pkgs(bounding_boxes,pkg_color):
     '''
     A function to identify the name of detected packages of a particular colour using the co-ordinates of bounding boxes.
     It updates the configuration file "config_pkg_color" at parameter server.
-
+    
     Parameter:
                 bounding_boxes: A list containing the all the bounding boxes of detected packages
                 pkg_color: Colour of the detected packages
+    
     Return : None
     '''
     for x,y,w,h in bounding_boxes:
@@ -100,23 +108,22 @@ def identify_pkgs(bounding_boxes,pkg_color):
 def detect_pkgs_color(shelf_image):
     '''
         detect_pkgs_color() is a function that detects the colour of all packages placed on the shelf.
-
+        
         Parameters:
                     shelf_image: a resized image of the shelf having all the packages 
-
+        
         Return:None
-
     '''
     pkg_colors=("red","green","yellow")
     bridge = CvBridge()
     try:
-      image = bridge.imgmsg_to_cv2(shelf_image, "bgr8") #Converting image to "BGR" format
+      image = bridge.imgmsg_to_cv2(shelf_image, "bgr8")
     except CvBridgeError as e:
       rospy.logerr(e)
     
-    resized_image=cv2.resize(image, (720/2, 1280/2)) #Resizing Image
+    resized_image=cv2.resize(image, (720/2, 1280/2))
 
-    hsv_image=cv2.cvtColor(resized_image,cv2.COLOR_BGR2HSV) #Converting BGR format image to HSV format image 
+    hsv_image=cv2.cvtColor(resized_image,cv2.COLOR_BGR2HSV) #Converting BGR format image to HSV format image
     #A For LOOP to detect all the packages of all colours present in pkg_colors
     for clr in pkg_colors:
         detect_pkgs_of_clr(resized_image,hsv_image,clr) #Calling detect_pkgs_of_clr() to detect packages of a particular colour 
@@ -125,12 +132,13 @@ def detect_pkgs_color(shelf_image):
 
 def main():
 
-    rospy.init_node('node_pkg_color_detection',anonymous = True)
+    rospy.init_node('node_pkg_color_detector',anonymous = True)
 
     shelf_image = rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image, timeout=None) 
     detect_pkgs_color(shelf_image) # detecting colour of all the packages
     print(rospy.get_param("/pkg_clr/"))
-    
+
+
 if __name__ == '__main__':
     main()
 

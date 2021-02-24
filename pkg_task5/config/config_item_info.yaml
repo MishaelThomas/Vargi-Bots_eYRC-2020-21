@@ -7,7 +7,7 @@ item_info:
     Medicine : "250"
     Food : "150"
     Clothes : "100"
-  delivery_time:
+  delivery_margin:
     Medicine : "1"
     Food : "3"
     Clothes : "5"
