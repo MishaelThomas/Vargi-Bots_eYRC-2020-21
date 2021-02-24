@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 '''
     This python file is reponsible for subscribing to the MQTT topic and publish the incoming
     orders to a ROS Topic.
@@ -7,7 +8,6 @@
     ROS Topic: "order_to_ur5_1".
 '''
 
-#!/usr/bin/env python
 
 import rospy
 # msgMqttSub: incoming orders are published to this ROS Topic: /ros_iot_bridge/mqtt/sub

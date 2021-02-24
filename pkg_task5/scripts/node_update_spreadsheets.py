@@ -1,3 +1,6 @@
+#! /usr/bin/env python
+
+
 '''
     This python file is reponsible for updating the spreadsheets which consists of Inventory,
     Incoming order, Orders Dispatched and Orders Shipped .
@@ -9,7 +12,7 @@
     are also updated.
 '''
 
-#!/usr/bin/env python
+
 
 from collections import OrderedDict as od
 from datetime import datetime, timedelta, date

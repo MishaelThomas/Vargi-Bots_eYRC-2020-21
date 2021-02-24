@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 '''
     This python file is reponsible for directing ur5_2 arm so as to pick incoming packages
     from the conveyor belt and dropping them on their respective bins after sorting.
@@ -11,7 +13,7 @@
     node_update_spreadsheets by publishing on ROS message: msgDispathAndShip so that it
     updates the information on Dispatched Orders Spreadsheet using IoT.
 '''
-#! /usr/bin/env python
+
 
 # Following messages are used to convey current status of the order:
 # msgDispatchOrder: to obtain information about dispatched packages
@@ -176,7 +178,7 @@ class Ur52Moveit:
         rpack = rospkg.RosPack()
         self._pkg_path = rpack.get_path('pkg_task5')
         self.file_path = self._pkg_path + '/config/ur5_2_saved_trajectories/'
-        rospy.loginfo("Package Path: {}".format(self._file_path))
+        rospy.loginfo("Package Path: {}".format(self.file_path))
 
         # This object is used to make sure that in later part of code,
         # when we need to update object WORK_DONE in thread1,

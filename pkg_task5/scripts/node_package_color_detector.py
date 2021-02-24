@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 '''
 This python file is responsible for carrying out activities related to computer vision.
 
@@ -6,7 +7,7 @@ It identifies he color of the packages and updates the parameter 'pkg_clr' on th
 It uses OpenCV modules for executing computer vision related tasks.
 '''
 
-#! /usr/bin/env python
+
 
 # Importing the required modules for activities related to ROS and Computer Vision
 import rospy

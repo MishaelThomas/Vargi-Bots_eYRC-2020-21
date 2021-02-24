@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 '''
     This python file is reponsible for directing ur5_1 arm so as to pick desired packages
     from the shelf and drop them on the conveyor belt.
@@ -13,7 +14,6 @@
     node_update_spreadsheets can update the information on Orders Dispatched Spreadsheet using
     IoT.
 '''
-#! /usr/bin/env python
 
 # Importing necessary modules for using ROS, Moveit Motion Planning framework.
 
