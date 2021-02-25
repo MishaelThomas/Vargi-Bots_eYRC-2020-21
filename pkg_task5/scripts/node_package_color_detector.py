@@ -14,7 +14,12 @@ import rospy
 import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+
 import numpy as np
+
+
+
+
 
 def detect_pkgs_of_clr(image, hsv_image, pkg_color):
     ''' 
@@ -30,19 +35,19 @@ def detect_pkgs_of_clr(image, hsv_image, pkg_color):
 
     bounding_boxes=[] 
     if pkg_color=="red":
-        lower_red = np.array([0,120,70])
+        lower_red = np.array([0,10,10])
         upper_red = np.array([10,255,255])
         mask1 = cv2.inRange(hsv_image, lower_red, upper_red)
-        lower_red = np.array([170,120,70])
+        lower_red = np.array([170,10,10])
         upper_red = np.array([180,255,255])
         mask2 = cv2.inRange(hsv_image,lower_red,upper_red)
         mask=mask1+mask2    #creating a mask to detect red coloured packages
     elif pkg_color=="green":
-        lower_green= np.array([36,120,70])
-        upper_green = np.array([70,255,255])
+        lower_green= np.array([36,10,10])
+        upper_green = np.array([86,255,255])
         mask = cv2.inRange(hsv_image, lower_green, upper_green) #creating a mask to detect green coloured packages
     elif pkg_color=="yellow":
-        lower_yellow= np.array([20,120,70])
+        lower_yellow= np.array([20,10,10])
         upper_yellow = np.array([30,255,255])
         mask = cv2.inRange(hsv_image, lower_yellow, upper_yellow) #creating a mask to detect yellow coloured packages
 
@@ -59,8 +64,10 @@ def detect_pkgs_of_clr(image, hsv_image, pkg_color):
             ar = w / float(h) # Computing ratio of Height and Width of bounding box
             if (ar>=0.95 and ar<=1.05): #Comparing ratio to actual height to width ratio of a square to  filter out rectangle shaped contours
               bounding_boxes.append((x,y,w,h)) #Appending  bounding box coordinates of detected packages to bounding_boxes list
-
-    identify_pkgs(bounding_boxes,pkg_color) #calling identify_pkgs() to identify the name of detected packages
+    print("{}____________".format(pkg_color))
+    print(bounding_boxes)
+    identify_pkgs(bounding_boxes,pkg_color)
+     #calling identify_pkgs() to identify the name of detected packages
     
 def identify_pkgs(bounding_boxes,pkg_color):
     '''
@@ -74,7 +81,8 @@ def identify_pkgs(bounding_boxes,pkg_color):
     Return : None
     '''
     for x,y,w,h in bounding_boxes:
-       if w<=50 and h<=50: #Comparing height and width of bounding box
+        #Comparing height and width of bounding box
+        if w>40 and y>40:
             if x in range(60,70):
                 if y in range(150,160):
                     rospy.set_param('/pkg_clr/packagen00',pkg_color)
@@ -134,10 +142,10 @@ def detect_pkgs_color(shelf_image):
 def main():
 
     rospy.init_node('node_pkg_color_detector',anonymous = True)
-
-    shelf_image = rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image, timeout=None) 
+    shelf_image=rospy.wait_for_message("/eyrc/vb/camera_1/image_raw", Image,timeout=None) 
     detect_pkgs_color(shelf_image) # detecting colour of all the packages
     print(rospy.get_param("/pkg_clr/"))
+    rospy.spin()
 
 
 if __name__ == '__main__':

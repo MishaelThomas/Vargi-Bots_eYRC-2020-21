@@ -540,7 +540,7 @@ def get_time_str():
     '''
     timestamp = int(time.time())
     value = datetime.datetime.fromtimestamp(timestamp)
-    str_time = value.strftime('%d/%m/%Y %H:%M:%S')
+    str_time = value.strftime('%Y-%m-%d %H:%M:%S')
     return str_time
 
 def main():

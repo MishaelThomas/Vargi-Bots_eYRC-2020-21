@@ -3,6 +3,7 @@
 <include file="$(find pkg_vb_sim)/launch/task5_world.launch" />
 
     <!-- Spawn T5 Boxes -->
+<rosparam file="$(find pkg_task5 )/config/config_pkg_color.yaml"/>
 <rosparam file ="$(find pkg_vb_sim)/config/config_package_colour.yaml"/>
 <node name= "task5_spawn_models" pkg= "pkg_vb_sim" type="task5_spawn_models.py"/>
 <include file = "$(find pkg_vb_sim)/launch/two_ur5_gazebo.launch"/>

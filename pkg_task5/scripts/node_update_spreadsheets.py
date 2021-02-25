@@ -171,7 +171,7 @@ def estimated_time_delivery(delivery_margin, shipped_time):
     '''
     # Estimated time is determined in the desired time format and returned to the calling function
     # after incorporating the delivery margin
-    ship_time = datetime.strptime(shipped_time, '%d/%m/%Y %H:%M:%S')
+    ship_time = datetime.strptime(shipped_time, '%Y-%m-%d %H:%M:%S')
     est_time_of_delivery = ship_time+timedelta(int(delivery_margin))
     etd = datetime.strftime(est_time_of_delivery, "%Y-%m-%d")
     return etd
