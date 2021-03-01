@@ -33,22 +33,25 @@ from pyiot import iot
 ITEMDATA = rospy.get_param("/item_info/")
 
 # URL of the sheet over which data is to be written
-URL = "https://script.google.com/macros/s/"+rospy.get_param("config_pyiot/google_apps/spreadsheet_id")+"/exec"
+URL_1 = "https://script.google.com/macros/s/"+rospy.get_param("config_pyiot/google_apps/spreadsheet_id")+"/exec"
+URL_2 = "https://script.google.com/macros/s/"+rospy.get_param("config_pyiot/google_apps/submission_spread_sheet_id")+"/exec"
 
 class UpdateSpreadheets:
-    '''
+    """
         UpdateSpreadheets class contains methods that update the following sheets: Inventory,
         Incoming Orders, Dispatched orders and Shipping Orders.
 
-        Attributes:
-                    all_orders
+        Parameters:
+                    all_orders: a dictionary that stores all incoming orders so that other
+                                functions can also access it
+
         Methods:
                 __init__()
                 incoming_orders_sheet()
                 dispatched_and_shipped_sheet()
 
         Detailed explanation for attributes and methods are given along with their use.
-    '''
+    """
 
     def __init__(self):
         '''
@@ -87,12 +90,12 @@ class UpdateSpreadheets:
         # Updating all_orders dictionary
         self.all_orders[incoming_order["order_id"]] = incoming_order
 
-        global ITEMDATA, URL
+        global ITEMDATA, URL_1, URL_2
 
         item = incoming_order["item"]
 
         # Create message to update spreadsheet
-        payload = {"Id" : "IncomingOrders",
+        payload = {"id" : "IncomingOrders",
                    "Team Id" : "VB#1194",
                    "Unique Id" : "PaThJaPa",
                    "Order Id" : incoming_order["order_id"],
@@ -107,7 +110,8 @@ class UpdateSpreadheets:
                   }
 
         # Updating Incoming Orders Spreadsheet
-        iot.spreadsheet_write(URL, payload=payload)
+        iot.spreadsheet_write(URL_1, payload=payload)
+        iot.spreadsheet_write(URL_2, payload=payload)
 
     def dispatched_and_shipped_sheet(self, order):
         '''
@@ -121,7 +125,7 @@ class UpdateSpreadheets:
             Return: None
         '''
 
-        global ITEMDATA, URL
+        global ITEMDATA, URL_1, URL_2
 
         order_info = self.all_orders[order.Order_Id]
 
@@ -137,14 +141,14 @@ class UpdateSpreadheets:
 
         # Second part of message is performed on the basis of task performed: Dispatched/Shipping
         if order.task_done == "Dispatched":
-            payload2 = {"Id":"OrdersDispatched",
+            payload2 = {"id":"OrdersDispatched",
                         "Dispatch Quantity":"1",
                         "Dispatch Status":"Yes",
                         "Dispatch Date and Time":order.Date_and_Time
                        }
         else:
             delv_margin = ITEMDATA["delivery_margin"][order_info["item"]]
-            payload2 = {"Id":"OrdersShipped",
+            payload2 = {"id":"OrdersShipped",
                         "Shipped Quantity":"1",
                         "Shipped Status":"Yes",
                         "Shipped Date and Time":order.Date_and_Time,
@@ -156,7 +160,8 @@ class UpdateSpreadheets:
         payload1.update(payload2)
 
         # Updating Dispatched/Shipping Orders Spreadsheet
-        iot.spreadsheet_write(URL, payload=payload1)
+        iot.spreadsheet_write(URL_1, payload=payload1)
+        iot.spreadsheet_write(URL_2, payload=payload1)
 
 def estimated_time_delivery(delivery_margin, shipped_time):
     '''
@@ -186,7 +191,7 @@ def update_inventory_sheet():
         Return: None
     '''
 
-    global ITEMDATA, URL
+    global ITEMDATA, URL_1, URL_2
 
     # obtaining the information about color of packages from parameter 'pkg_clr'
     package_data = rospy.get_param("/pkg_clr/")
@@ -207,7 +212,7 @@ def update_inventory_sheet():
         clr = ITEMDATA["item_pkg_color"]
         item = [k for k in clr.keys() if clr[k] == pkg_color][0]
 
-        parameters = {"Id":"Inventory",
+        parameters = {"id":"Inventory",
                       "Team Id":"VB#1194",
                       "Unique Id":"PaThJaPa",
                       "SKU":sku,
@@ -218,7 +223,8 @@ def update_inventory_sheet():
                       "Item":item
                      }
         # Updating inventory sheet
-        iot.spreadsheet_write(URL, payload=parameters)
+        iot.spreadsheet_write(URL_1, payload=parameters)
+        iot.spreadsheet_write(URL_2, payload=parameters)
 
 
 

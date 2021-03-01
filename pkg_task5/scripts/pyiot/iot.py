@@ -62,6 +62,6 @@ def spreadsheet_write(URL,**kwargs):
     payload=kwargs["payload"]
     response = requests.get(URL, params=payload)
     if(response.content=="success"):
-        print("spreadsheet with id"+" "+payload["Id"]+" "+"updated")
+        print("spreadsheet with id"+" "+payload["id"]+" "+"updated")
     else:
-        print("request to update sheet ID"+" "+payload["Id"]+"is unsuccessful")
+        print("request to update sheet id"+" "+payload["id"]+"is unsuccessful")

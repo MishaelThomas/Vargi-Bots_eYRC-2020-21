@@ -10,31 +10,36 @@
 
 	<include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />
 	
+	<!-- Following args are used to control the launch of nodes -->
 	<arg name="node_start_delay_1" default="120.0" />
-	<arg name="node_start_delay_2" default="120.0" />
-	<arg name="node_start_delay_3" default="160.0"/>
-	<arg name="node_start_delay_4" default="160.0" />
+	<arg name="node_start_delay_2" default="150.0" />
+	<arg name="node_start_delay_3" default="180.0"/>
+	<arg name="node_start_delay_4" default="200.0" />
     
 
 	
     <!-- Spawn two UR5 in Gazebo -->
     <include file = "$(find pkg_vb_sim)/launch/two_ur5_gazebo.launch"/>
     
+    <!-- Load information regarding packages like their cost, estimated time of delivery etc. -->
     <rosparam file ="$(find pkg_task5)/config/config_item_info.yaml"/>
     
-    <!---->
+    <!-- Load paramters required for communication through MQTT protocol, further running node_ros_iot_bridge which
+    	acts as a bridge between ROS and IoT -->
     <rosparam file="$(find pkg_ros_iot_bridge )/config/config_pyiot.yaml"/>
     <node name= "node_ros_iot_bridge" pkg="pkg_ros_iot_bridge" type="node_ros_iot_bridge.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_1); $0 $@' " />     
     
+    <!-- Load paramters that will br updated by node_package_color_detector after using computer vision techniques -->
     <rosparam file="$(find pkg_task5 )/config/config_pkg_color.yaml"/>
     <node name= "node_package_color_detector" pkg="pkg_task5" type="node_package_color_detector.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@'" />     
     
     <!-- Run Conveyor Belt Service Server -->
-    <node name= "node_service_server_conveyor_belt" pkg= "pkg_vb_sim" type="node_service_server_conveyor_belt.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3); $0 $@'" />   
+    <node name= "node_service_server_conveyor_belt" pkg= "pkg_vb_sim" type="node_service_server_conveyor_belt.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_2); $0 $@'" />   
     
-    
+    <!-- Run node_control_ur5_2_and_belt to control ur5_1=2 arm and conveyor belt -->
      <node name="node_control_ur5_2_and_belt" pkg="pkg_task5" type="node_control_ur5_2_and_belt.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3);  $0 $@'" /> 
 	
+	<!-- Run node_control_ur5_1 to control ur5_1 arm --> 
 	<node name="node_control_ur5_1" pkg="pkg_task5" type="node_control_ur5_1.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3);  $0 $@'" />
     
 
@@ -42,6 +47,7 @@
     <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>    
     <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_4); $0 $@'" /> 
     
+    <!-- Run node_update_spreadsheets which commands node_ros_iot_bridge to update spreadsheets -->
     <node name="node_update_spreadsheets" pkg="pkg_task5" type="node_update_spreadsheets.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_4);  $0 $@'" />  
     
     <!-- Recording Bag File for Submission -->
