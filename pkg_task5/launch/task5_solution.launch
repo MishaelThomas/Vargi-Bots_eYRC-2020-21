@@ -3,23 +3,23 @@
 	<!-- Spawn Task-2 Models in Gazebo -->
     <include file="$(find pkg_vb_sim)/launch/task5_world.launch" />
 
-    <!-- Spawn T5 Boxes -->
-    <rosparam file ="$(find pkg_vb_sim)/config/config_package_colour.yaml"/>
-    <node name= "task5_spawn_models" pkg= "pkg_vb_sim" type="task5_spawn_models.py"/>
-    
-
-	<include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />
+    <include file="$(find pkg_vb_sim)/launch/two_ur5_move_group.launch" />
 	
 	<!-- Following args are used to control the launch of nodes -->
-	<arg name="node_start_delay_1" default="120.0" />
-	<arg name="node_start_delay_2" default="150.0" />
-	<arg name="node_start_delay_3" default="180.0"/>
-	<arg name="node_start_delay_4" default="200.0" />
+	<arg name="node_start_delay_1" default="100.0" />
+	<arg name="node_start_delay_2" default="120.0" />
+	<arg name="node_start_delay_3" default="140.0"/>
+	<arg name="node_start_delay_4" default="160.0" />
     
 
 	
     <!-- Spawn two UR5 in Gazebo -->
     <include file = "$(find pkg_vb_sim)/launch/two_ur5_gazebo.launch"/>
+
+    <!-- Run T6 Launcher -->
+    <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>
+    <node name= "task6_launcher" pkg= "pkg_vb_sim" type="task6_launcher.py" output="screen"/>
+    
     
     <!-- Load information regarding packages like their cost, estimated time of delivery etc. -->
     <rosparam file ="$(find pkg_task5)/config/config_item_info.yaml"/>
@@ -41,11 +41,6 @@
 	
 	<!-- Run node_control_ur5_1 to control ur5_1 arm --> 
 	<node name="node_control_ur5_1" pkg="pkg_task5" type="node_control_ur5_1.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_3);  $0 $@'" />
-    
-
-    <!-- Run the Online Order Placer Node -->
-    <rosparam file ="$(find pkg_vb_sim)/config/config_online_order.yaml"/>    
-    <node name= "node_online_order_placer" pkg= "pkg_vb_sim" type="node_online_order_placer.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_4); $0 $@'" /> 
     
     <!-- Run node_update_spreadsheets which commands node_ros_iot_bridge to update spreadsheets -->
     <node name="node_update_spreadsheets" pkg="pkg_task5" type="node_update_spreadsheets.py" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay_4);  $0 $@'" />  

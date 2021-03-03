@@ -33,8 +33,8 @@ from pyiot import iot
 ITEMDATA = rospy.get_param("/item_info/")
 
 # URL of the sheet over which data is to be written
-URL_1 = "https://script.google.com/macros/s/"+rospy.get_param("config_pyiot/google_apps/spreadsheet_id")+"/exec"
-URL_2 = "https://script.google.com/macros/s/"+rospy.get_param("config_pyiot/google_apps/submission_spread_sheet_id")+"/exec"
+URL_1 = "https://script.google.com/macros/s/"+rospy.get_param("config_pyiot/google_apps/spreadsheet_id")+"/exec" # team id
+URL_2 = "https://script.google.com/macros/s/"+rospy.get_param("config_pyiot/google_apps/submission_spread_sheet_id")+"/exec" #eyrc id
 
 class UpdateSpreadheets:
     """

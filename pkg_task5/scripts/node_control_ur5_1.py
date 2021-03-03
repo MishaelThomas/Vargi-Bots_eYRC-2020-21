@@ -299,6 +299,7 @@ def cb_update_exec_list(msg):
     # Once the desired index is obtained, we update PRIORITY_LIST and EXEC_LIST
     PRIORITY_LIST.insert(ind, priority)
     EXEC_LIST.insert(ind, [pkg, msg.Order_Id])
+    #if(EXEC_LIST[CURRENT][2]==1 and PRIORITY_LIST):
     PKG_COUNT += 1
 
 def main():
