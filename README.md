@@ -30,7 +30,7 @@ Dashboard was used to show live status of warehouse. It was implemented using AJ
 
 ### Google App Scripting
 
-Data recieved from warehouse through HTTPS protocol was updated in the Google spreadsheets using Google Apps Scripting. It was also used to send mail notification to customers.
+Data recieved from warehouse through HTTPS protocol was updated in the Google spreadsheets using Google App Scripting. It was also used to send mail notification to customers.
 
 # Technology Stack:
 
