@@ -9,17 +9,18 @@ The arena is an automated warehouse setting where essential packages are require
 
 # Sections
 
-### Robotic Manipulation: Specified in [node_control_ur5_1.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_task5/scripts/node_control_ur5_1.py) and [node_control_ur5_2_and_belt.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_task5/scripts/node_control_ur5_2_and_belt.py)
+### Robotic Manipulation : Specified in [node_control_ur5_1.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_task5/scripts/node_control_ur5_1.py) and [node_control_ur5_2_and_belt.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_task5/scripts/node_control_ur5_2_and_belt.py)
 
 Moveit was used as a framework for motion planning of robots.Threading was used to control UR5 arm and conveyer belt simultaneoulsy to decrease the sorting time. An efficient sorting algorithm was implemented to sort the packages according to thier priority.(In the given task priority depends on colour of the package).
 
 ### Robotic Perception : Specified in [node_package_color_detector.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_task5/scripts/node_package_color_detector.py)
 
-Image processing algorithms were used to determine colour and location of packages from image of the shelf.Image was converted into HSV format to make colour detection insensitive to variation in light. We did not use QR code to find these information about the packages as QR code is sensitive to variation in light.
+Image processing algorithms were used to determine colour and location of packages from image of the shelf.Image was converted into HSV format to make colour detection insensitive to variation in light. We did not use QR code to find these informations about the packages as QR code was found to be sensitive to variation in light.
 
+Shelf Image: 
+![alt text](Shelf_image.png)
 
-
-### IOT: Specified in [node_ros_iot_bridge.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_ros_iot_bridge/scripts/node_ros_iot_bridge.py),[iot.py](https://github.com/MishaelThomas/eYRC-2020-21/tree/main/pkg_ros_iot_bridge/scripts/pyiot) and [node_update_spreadsheet.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_task5/scripts/node_update_spreadsheets.py)
+### IOT : Specified in [node_ros_iot_bridge.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_ros_iot_bridge/scripts/node_ros_iot_bridge.py), [iot.py](https://github.com/MishaelThomas/eYRC-2020-21/tree/main/pkg_ros_iot_bridge/scripts/pyiot) and [node_update_spreadsheet.py](https://github.com/MishaelThomas/eYRC-2020-21/blob/main/pkg_task5/scripts/node_update_spreadsheets.py)
 
 MQTT protocol was used by warehouse to recieve online orders.HTTPS protocol was used by warehouse to update Inventory Management spreadsheet and to send notification to customers about status of ordered package.
 
